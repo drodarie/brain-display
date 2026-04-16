@@ -4,7 +4,6 @@ export class Camera extends THREE.PerspectiveCamera{
 
     constructor( fov = 40, aspect = 1, near = 0.1, far = 1500 ) {
         super(fov, aspect, near, far);
-        this.position.z = 5;
         this.translation = [0.0, 0.0, 0.0];
         this.translation_old = [0.0, 0.0, 0.0];
         this.glob_position = [

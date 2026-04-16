@@ -9,6 +9,7 @@ export class World {
     constructor() {
         this.loaded_meshes = {};
         this.points = null;
+        this.selected = [-1, 0, 0]; // id point selected, original size and original alpha
         this.camera = new Camera( 40, window.innerWidth / window.innerHeight, 0.1, 1500);
         this.scene = new THREE.Scene();
 
@@ -71,6 +72,40 @@ export class World {
         points.onBeforeRender = function (renderer) { renderer.clearDepth(); };
     }
 
+    click_on_points(){
+        let raycaster = new THREE.Raycaster();
+        raycaster.setFromCamera(this.eventListener.mouseV2, this.camera);
+
+        let intersects = raycaster.intersectObjects( [this.points] );
+        if(intersects.length>0) {
+            let minDist = Infinity;
+            let bestIdx = -1;
+            for(let iintersects=0; iintersects < intersects.length; ++iintersects){
+                    if(
+                        intersects[iintersects].distance < minDist
+                        && this.points.geometry.attributes.ex.array[intersects[iintersects].index]>0.5 // is point visible
+                    ){
+                        minDist = intersects[iintersects].distance;
+                        bestIdx = intersects[iintersects].index;
+                    }
+                }
+            if(this.selected[0] >=0) {
+                // reset to old size and old alpha
+                this.points.geometry.attributes.size.array[this.selected[0]] = this.selected[1];
+                this.points.geometry.attributes.caA.array[this.selected[0]] = this.selected[2];
+            }
+            this.selected[0] = bestIdx;
+            if(bestIdx >= 0){
+                this.selected[2] = this.points.geometry.attributes.caA.array[bestIdx];
+                this.selected[1] = this.points.geometry.attributes.size.array[bestIdx];
+                this.points.geometry.attributes.size.array[bestIdx] *= 1.5;
+                this.points.geometry.attributes.caA.array[bestIdx] = 2.0;
+            }
+            this.points.geometry.attributes.caA.needsUpdate = true;
+            this.points.geometry.attributes.size.needsUpdate = true;
+        }
+    }
+
     animate() {
         this.renderer.render(this.scene, this.camera);
         this.eventListener.update_camera();
@@ -79,8 +114,11 @@ export class World {
             this.loaded_meshes[i].material.uniforms.camVy.value = this.camera.translation[1] - this.camera.glob_position[1];
             this.loaded_meshes[i].material.uniforms.camVz.value = this.camera.translation[2] - this.camera.glob_position[2];
         }
-        if (this.points !== null && this.points.material !== undefined && this.points.material !==null) {
-            this.points.material.uniforms.shaderZoom.value = this.eventListener.zoom;
+        if (this.points !== null){
+            if (this.points.material !== undefined && this.points.material !==null) {
+                this.points.material.uniforms.shaderZoom.value = this.eventListener.zoom;
+            }
+            this.click_on_points()
         }
         this.updated = false;
     }
