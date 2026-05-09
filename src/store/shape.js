@@ -1,7 +1,6 @@
 import * as THREE from "three";
 import {MeshBlendShader} from "@/store/shaders/MeshBlendShader.js";
 import {allen_data} from "@/store/allen_atlas.js";
-import {backgroundIntensity} from "three/tsl";
 
 export class Shape {
     constructor(id, filename, callback, size = null,
@@ -65,6 +64,7 @@ export class Shape {
     
     change_mesh_blending(){
         if(this.mesh !== null && this.id !== 997){
+            // for every other mesh than the external brain mesh / root mesh
             if(this.blended){
                 this.mesh.material.blending = THREE.AdditiveBlending;
                 this.mesh.material.depthTest = false;
@@ -82,7 +82,7 @@ export class Shape {
         this.mesh = new THREE.Mesh(
             this.geometry,
             new THREE.ShaderMaterial({
-                uniforms: MeshBlendShader.uniforms,
+                uniforms: THREE.UniformsUtils.clone(MeshBlendShader.uniforms),
                 vertexShader: MeshBlendShader.vertexShader,
                 fragmentShader: MeshBlendShader.fragmentShader,
                 blending: THREE.AdditiveBlending,

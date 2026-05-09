@@ -15,46 +15,59 @@ export class World {
 
         this.renderer = new THREE.WebGLRenderer({alpha: false, preserveDrawingBuffer: true, antialias: false });
         this.renderer.setSize( window.innerWidth, window.innerHeight );
-        this.renderer.setClearColor( new THREE.Color("#000000"), 1 );
-        // this.renderer.setClearColor( new THREE.Color("#FFFFFF"), 1 );
+        this.light_background = true;
+        this.toggle_background_color();
         this.renderer.sortObjects = true;
         this.updated = false;
 
-        new Shape(
-            -1, null, this.add_mesh.bind(this), [300, 200, 200],
-            "io layer", color_mtypes.io, 100, [150.0, 350.0, 100.0], 0.5, true
-        );
-        new Shape(
-            -2, null, this.add_mesh.bind(this), [300, 200, 200],
-            "dcn layer", color_mtypes.dcn_p, 100, [150, 150, 100], 0.5, true
-        );
-        new Shape(
-            -3, null, this.add_mesh.bind(this), [300, 130, 200],
-            "granular layer", [0.7, 0.15, 0.15, 1.0], 100, [150, -50, 100], 0.5, true
-        );
-        new Shape(
-            -4, null, this.add_mesh.bind(this), [300, 15, 200],
-            "purkinje layer", color_mtypes.purkinje_cell, 100, [150, 350-530, 100], 0.5, true
-        );
-        new Shape(
-            -4, null, this.add_mesh.bind(this), [300, 150, 200],
-            "molecular layer", color_mtypes.basket_cell, 100, [150, 350-545, 100], 0.5, true
-        );
-        new CellPositions("src/assets/cereb-circuit/", this.add_points.bind(this), 600, 0.5, [150.0, 350.0, 100.0]);
-        // new Shape(
-        //     997,
-        //     "src/assets/meshesMS/decimated_smoothed_mesh_997.obj",
-        //     this.add_mesh.bind(this), null,
-        //     "root", null, 400, [528.0/2, -320.0/2, 456.0/2]
-        // );
-        // new CellPositions("src/assets/mouse-brain/", this.add_points.bind(this));
         this.renderer.setAnimationLoop( this.animate.bind(this) );
         this.eventListener = new EventListener(this.camera, this.renderer);
+    }
+
+    toggle_background_color(){
+        // switch background_color between white and black
+        this.light_background = !this.light_background;
+        let col = Number(this.light_background);
+        this.renderer.setClearColor( new THREE.Color(col, col, col), 1 );
     }
 
     init(container) {
         this.eventListener.init_interactions(container);
         this.renderer.render(this.scene, this.camera);
+    }
+
+    render_whole_brain() {
+        new Shape(
+            997,
+            "src/assets/meshesMS/decimated_smoothed_mesh_997.obj",
+            this.add_mesh.bind(this), null,
+            "root", null, 400, [528.0/2, -320.0/2, 456.0/2]
+        );
+        // new CellPositions("src/assets/mouse-brain/", this.add_points.bind(this));
+    }
+
+    render_column(){
+        new Shape(
+                -1, null, this.add_mesh.bind(this), [300, 200, 200],
+                "io layer", color_mtypes.io, 100, [150.0, 350.0, 100.0], 0.5, true
+            );
+            new Shape(
+                -2, null, this.add_mesh.bind(this), [300, 200, 200],
+                "dcn layer", color_mtypes.dcn_p, 100, [150, 150, 100], 0.5, true
+            );
+            new Shape(
+                -3, null, this.add_mesh.bind(this), [300, 130, 200],
+                "granular layer", [0.7, 0.15, 0.15, 1.0], 100, [150, -50, 100], 0.5, true
+            );
+            new Shape(
+                -4, null, this.add_mesh.bind(this), [300, 15, 200],
+                "purkinje layer", color_mtypes.purkinje_cell, 100, [150, 350-530, 100], 0.5, true
+            );
+            new Shape(
+                -4, null, this.add_mesh.bind(this), [300, 150, 200],
+                "molecular layer", color_mtypes.basket_cell, 100, [150, 350-545, 100], 0.5, true
+            );
+            new CellPositions("src/assets/cereb-circuit/", this.add_points.bind(this), 600, 0.5, [150.0, 350.0, 100.0]);
     }
 
     add_mesh(id, mesh){
