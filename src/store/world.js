@@ -41,7 +41,8 @@ export class World {
             997,
             "src/assets/meshesMS/decimated_smoothed_mesh_997.obj",
             this.add_mesh.bind(this), null,
-            "root", null, 400, [528.0/2, -320.0/2, 456.0/2]
+            "root", null, 400, [528.0/2, -320.0/2, 456.0/2],
+            1.0, false, true
         );
         // new CellPositions("src/assets/mouse-brain/", this.add_points.bind(this));
     }
@@ -70,8 +71,8 @@ export class World {
             new CellPositions("src/assets/cereb-circuit/", this.add_points.bind(this), 600, 0.5, [150.0, 350.0, 100.0]);
     }
 
-    add_mesh(id, mesh){
-        this.loaded_meshes[id] = mesh;
+    add_mesh(id, mesh, is_root){
+        this.loaded_meshes[id] = [mesh, is_root];
         this.scene.add( mesh );
         if (!this.updated){
             this.updated = true;
@@ -123,15 +124,23 @@ export class World {
         this.renderer.render(this.scene, this.camera);
         this.eventListener.update_camera();
         for (let i in this.loaded_meshes){
-            this.loaded_meshes[i].material.uniforms.camVx.value = this.camera.translation[0] - this.camera.glob_position[0];
-            this.loaded_meshes[i].material.uniforms.camVy.value = this.camera.translation[1] - this.camera.glob_position[1];
-            this.loaded_meshes[i].material.uniforms.camVz.value = this.camera.translation[2] - this.camera.glob_position[2];
+            let mesh = this.loaded_meshes[i][0];
+            mesh.material.uniforms.camVx.value = this.camera.translation[0] - this.camera.glob_position[0];
+            mesh.material.uniforms.camVy.value = this.camera.translation[1] - this.camera.glob_position[1];
+            mesh.material.uniforms.camVz.value = this.camera.translation[2] - this.camera.glob_position[2];
+            if (this.loaded_meshes[i][1]) {
+                let alphactor = 0.6 * (1.0 - Math.exp(-(this.eventListener.zoom - 450.0) * 0.0030));
+                for (let j = 0; j < mesh.geometry.attributes.caA.array.length; j++) {
+                    mesh.geometry.attributes.caA.array[j] = alphactor;
+                }
+                mesh.geometry.attributes.caA.needsUpdate = true;
+            }
         }
         if (this.points !== null){
             if (this.points.material !== undefined && this.points.material !==null) {
                 this.points.material.uniforms.shaderZoom.value = this.eventListener.zoom;
             }
-            this.click_on_points()
+            this.click_on_points();
         }
         this.updated = false;
     }
