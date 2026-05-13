@@ -122,11 +122,13 @@ export class EventListener {
         this.mouse_last.x = this.mouse.x;
         this.mouse_last.y = this.mouse.y;
 
+        let old_glob_position = this.camera.glob_position;
         this.camera.glob_position = [
             this.camera.translation[0] + this.zoom * Math.cos(this.theta) * Math.sin(this.phi),
             this.camera.translation[1] + this.zoom * Math.cos(this.phi),
             this.camera.translation[2] + this.zoom * Math.sin(this.theta) * Math.sin(this.phi)
         ];
+        let has_updated = old_glob_position !== this.camera.glob_position;
         this.camera.position.set(
             this.camera.glob_position[0],
             this.camera.glob_position[1],
@@ -138,5 +140,6 @@ export class EventListener {
             this.camera.translation[2]
         ));
 		this.camera.updateProjectionMatrix();
+        return has_updated;
     }
 }

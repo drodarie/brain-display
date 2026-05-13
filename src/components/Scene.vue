@@ -7,8 +7,8 @@
 
   onMounted(() => {
     target.value.appendChild(world.renderer.domElement);
-    world.render_whole_brain()
-    world.init(target.value)
+    world.render_whole_brain();
+    world.init(target.value);
   });
 </script>
 

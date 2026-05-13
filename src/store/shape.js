@@ -6,7 +6,7 @@ export class Shape {
     constructor(id, filename, callback, size = null,
                 name= null, color= null, z_order = 100,
                 offset = [528.0, 320.0, 456.0], scale = 1.0,
-                blended= false, is_root=false) {
+                blended= false, is_root=false, invert_colors = false) {
         this.id = id;
         if (name !== null){
             this.name = name;
@@ -20,6 +20,9 @@ export class Shape {
         }
         else{
             this.color = (this.id in allen_data.color) ? allen_data.color[this.id] : allen_data.color[997];
+        }
+        if (invert_colors && !is_root){
+            this.color = [1.0 - this.color[0], 1.0 - this.color[1], 1.0 - this.color[2]];
         }
         this.offset = offset;
         this.scale = scale;
@@ -70,7 +73,6 @@ export class Shape {
             // root mesh is not transparent
             this.mesh.material.blending = THREE.AdditiveBlending;
             this.mesh.material.transparent = false;
-            this.mesh.material.needsUpdate = true;
         } else if (this.blended) {
             this.mesh.material.blending = THREE.AdditiveBlending;
             this.mesh.material.depthTest = false;
@@ -80,6 +82,7 @@ export class Shape {
             this.mesh.material.depthTest = true;
             this.mesh.material.transparent = false;
         }
+        this.mesh.material.needsUpdate = true;
     }
 
     create_mesh(){
@@ -115,7 +118,6 @@ export class Shape {
         this.geometry.setAttribute( "caR", new THREE.Float32BufferAttribute(new Array(24).fill(this.color[0]), 1).setUsage( THREE.DynamicDrawUsage ));
         this.geometry.setAttribute( "caG", new THREE.Float32BufferAttribute(new Array(24).fill(this.color[1]), 1).setUsage( THREE.DynamicDrawUsage ));
         this.geometry.setAttribute( "caB", new THREE.Float32BufferAttribute(new Array(24).fill(this.color[2]), 1).setUsage( THREE.DynamicDrawUsage ));
-        this.geometry.setAttribute( "caA", new THREE.Float32BufferAttribute(new Array(24).fill(1.0), 1).setUsage( THREE.DynamicDrawUsage ));
         this.create_mesh();
     }
 
@@ -134,7 +136,6 @@ export class Shape {
         let caR = new Array(vertices_.length/3).fill(this.color[0]);
         let caG = new Array(vertices_.length/3).fill(this.color[1]);
         let caB = new Array(vertices_.length/3).fill(this.color[2]);
-        let caA = new Array(vertices_.length/3).fill(1.0);
 
         this.geometry = new THREE.BufferGeometry();
         this.geometry.setAttribute( "position", new THREE.Float32BufferAttribute( vertices_, 3)  );
@@ -150,10 +151,6 @@ export class Shape {
         this.geometry.setAttribute(
             "caB",
             new THREE.Float32BufferAttribute( caB, 1).setUsage( THREE.DynamicDrawUsage )
-        );
-        this.geometry.setAttribute(
-            "caA",
-            new THREE.Float32BufferAttribute( caA, 1).setUsage( THREE.DynamicDrawUsage )
         );
 
         this.create_mesh();

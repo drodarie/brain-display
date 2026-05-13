@@ -10,14 +10,14 @@ export let MeshBlendShader = {
     },
 
     vertexShader: [
-        "attribute float caR; attribute float caG; attribute float caB; attribute float caA;",
+        "attribute float caR; attribute float caG; attribute float caB;",
         "uniform float camVx; uniform float camVy; uniform float camVz; uniform float totRGB;",
         "varying vec4 vC; varying vec3 vcamV; varying vec3 vNormal; varying float totRGBf;",
         "void main() {",
             "totRGBf = totRGB;",
             "vcamV = normalize(vec3(camVx,camVy,camVz));",
             "vNormal = normalize(normal);",
-            "vC = vec4(caR, caG, caB, caA);",
+            "vC = vec4(caR, caG, caB, 1.0);",
             "gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );",
         "}"
     ].join("\n"),

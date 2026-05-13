@@ -3,6 +3,7 @@ import {EventListener} from "@/store/interact.js";
 import {Camera} from "@/store/camera.js";
 import {CellPositions, color_mtypes} from "@/store/cells.js";
 import {Shape} from "@/store/shape.js";
+import {MeshBlendShader} from "@/store/shaders/MeshBlendShader.js";
 
 
 export class World {
@@ -27,8 +28,22 @@ export class World {
     toggle_background_color(){
         // switch background_color between white and black
         this.light_background = !this.light_background;
-        let col = Number(this.light_background);
+        let col = Number(this.light_background); // 1 or 0
         this.renderer.setClearColor( new THREE.Color(col, col, col), 1 );
+        MeshBlendShader.uniforms.totRGB.value = col;
+        for (let i in this.loaded_meshes) {
+            let mesh = this.loaded_meshes[i][0];
+            if (!mesh.is_root){
+                for (let j = 0; j < mesh.geometry.attributes.caR.array.length; j++) {
+                    mesh.geometry.attributes.caR.array[j] = 1.0 - mesh.geometry.attributes.caR.array[j];
+                    mesh.geometry.attributes.caG.array[j] = 1.0 - mesh.geometry.attributes.caG.array[j];
+                    mesh.geometry.attributes.caB.array[j] = 1.0 - mesh.geometry.attributes.caB.array[j];
+                }
+                mesh.geometry.needsUpdate = true;
+            }
+            mesh.material.uniforms.totRGB.value = col;
+            mesh.material.needsUpdate = true;
+        }
     }
 
     init(container) {
@@ -37,12 +52,14 @@ export class World {
     }
 
     render_whole_brain() {
+        let c = this.get_root_color();
         new Shape(
             997,
             "src/assets/meshesMS/decimated_smoothed_mesh_997.obj",
             this.add_mesh.bind(this), null,
-            "root", null, 400, [528.0/2, -320.0/2, 456.0/2],
-            1.0, false, true
+            "root", [c, c, c],
+            400, [528.0/2, -320.0/2, 456.0/2],
+            1.0, false, true, this.light_background
         );
         // new CellPositions("src/assets/mouse-brain/", this.add_points.bind(this));
     }
@@ -50,25 +67,31 @@ export class World {
     render_column(){
         new Shape(
                 -1, null, this.add_mesh.bind(this), [300, 200, 200],
-                "io layer", color_mtypes.io, 100, [150.0, 350.0, 100.0], 0.5, true
+                "io layer", color_mtypes.io, 100, [150.0, 350.0, 100.0], 0.5,
+            true, false, this.light_background
             );
             new Shape(
                 -2, null, this.add_mesh.bind(this), [300, 200, 200],
-                "dcn layer", color_mtypes.dcn_p, 100, [150, 150, 100], 0.5, true
+                "dcn layer", color_mtypes.dcn_p, 100, [150, 150, 100], 0.5,
+                true, false, this.light_background
             );
             new Shape(
                 -3, null, this.add_mesh.bind(this), [300, 130, 200],
-                "granular layer", [0.7, 0.15, 0.15, 1.0], 100, [150, -50, 100], 0.5, true
+                "granular layer", [0.7, 0.15, 0.15, 1.0], 100, [150, -50, 100], 0.5,
+                true, false, this.light_background
             );
             new Shape(
                 -4, null, this.add_mesh.bind(this), [300, 15, 200],
-                "purkinje layer", color_mtypes.purkinje_cell, 100, [150, 350-530, 100], 0.5, true
+                "purkinje layer", color_mtypes.purkinje_cell, 100, [150, 350-530, 100], 0.5,
+                true, false, this.light_background
             );
             new Shape(
                 -4, null, this.add_mesh.bind(this), [300, 150, 200],
-                "molecular layer", color_mtypes.basket_cell, 100, [150, 350-545, 100], 0.5, true
+                "molecular layer", color_mtypes.basket_cell, 100, [150, 350-545, 100], 0.5,
+                true, false, this.light_background
             );
-            new CellPositions("src/assets/cereb-circuit/", this.add_points.bind(this), 600, 0.5, [150.0, 350.0, 100.0]);
+            new CellPositions("src/assets/cereb-circuit/", this.add_points.bind(this), 600, 0.5,
+                [150.0, 350.0, 100.0]);
     }
 
     add_mesh(id, mesh, is_root){
@@ -120,26 +143,39 @@ export class World {
         }
     }
 
+    get_root_color(){
+        return 0.6 * (1.0 - Math.exp(-(this.eventListener.zoom - 450.0) * 0.0030));
+    }
+
     animate() {
         this.renderer.render(this.scene, this.camera);
-        this.eventListener.update_camera();
-        for (let i in this.loaded_meshes){
-            let mesh = this.loaded_meshes[i][0];
-            mesh.material.uniforms.camVx.value = this.camera.translation[0] - this.camera.glob_position[0];
-            mesh.material.uniforms.camVy.value = this.camera.translation[1] - this.camera.glob_position[1];
-            mesh.material.uniforms.camVz.value = this.camera.translation[2] - this.camera.glob_position[2];
-            if (this.loaded_meshes[i][1]) {
-                let alphactor = 0.6 * (1.0 - Math.exp(-(this.eventListener.zoom - 450.0) * 0.0030));
-                for (let j = 0; j < mesh.geometry.attributes.caA.array.length; j++) {
-                    mesh.geometry.attributes.caA.array[j] = alphactor;
+        let has_updated = this.eventListener.update_camera();
+        if (has_updated) {
+            for (let i in this.loaded_meshes) {
+                let mesh = this.loaded_meshes[i][0];
+                mesh.material.uniforms.camVx.value = this.camera.translation[0] - this.camera.glob_position[0];
+                mesh.material.uniforms.camVy.value = this.camera.translation[1] - this.camera.glob_position[1];
+                mesh.material.uniforms.camVz.value = this.camera.translation[2] - this.camera.glob_position[2];
+                if (this.loaded_meshes[i][1]) {
+                    // root mesh color is based on zoom.
+                    let color = 0.6 * (1.0 - Math.exp(-(this.eventListener.zoom - 450.0) * 0.0030));
+                    for (let j = 0; j < mesh.geometry.attributes.caR.array.length; j++) {
+                        mesh.geometry.attributes.caR.array[j] = color;
+                        mesh.geometry.attributes.caG.array[j] = color;
+                        mesh.geometry.attributes.caB.array[j] = color;
+                    }
+                    mesh.geometry.attributes.caR.needsUpdate = true;
+                    mesh.geometry.attributes.caG.needsUpdate = true;
+                    mesh.geometry.attributes.caB.needsUpdate = true;
                 }
-                mesh.geometry.attributes.caA.needsUpdate = true;
+            }
+            if (this.points !== null) {
+                if (this.points.material !== undefined && this.points.material !== null) {
+                    this.points.material.uniforms.shaderZoom.value = this.eventListener.zoom;
+                }
             }
         }
         if (this.points !== null){
-            if (this.points.material !== undefined && this.points.material !==null) {
-                this.points.material.uniforms.shaderZoom.value = this.eventListener.zoom;
-            }
             this.click_on_points();
         }
         this.updated = false;
