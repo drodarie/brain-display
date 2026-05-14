@@ -77,7 +77,7 @@ export class Shape {
             this.mesh.material.depthTest = false;
             this.mesh.material.transparent = true;
         } else {
-            this.mesh.material.blending = THREE.NormalBlending;
+            this.mesh.material.blending = THREE.NoBlending;
             this.mesh.material.depthTest = true;
             this.mesh.material.transparent = false;
         }

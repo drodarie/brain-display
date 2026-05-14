@@ -123,30 +123,30 @@ export class World {
         new Shape(
                 -1, null, this.add_mesh.bind(this), [300, 200, 200],
                 "io layer", color_mtypes.io, 100, [150.0, 350.0, 100.0], 0.5,
-            true, false, this.light_background
+            false, false, this.light_background
             );
-            new Shape(
-                -2, null, this.add_mesh.bind(this), [300, 200, 200],
-                "dcn layer", color_mtypes.dcn_p, 100, [150, 150, 100], 0.5,
-                true, false, this.light_background
-            );
-            new Shape(
-                -3, null, this.add_mesh.bind(this), [300, 130, 200],
-                "granular layer", [0.7, 0.15, 0.15, 1.0], 100, [150, -50, 100], 0.5,
-                true, false, this.light_background
-            );
-            new Shape(
-                -4, null, this.add_mesh.bind(this), [300, 15, 200],
-                "purkinje layer", color_mtypes.purkinje_cell, 100, [150, 350-530, 100], 0.5,
-                true, false, this.light_background
-            );
-            new Shape(
-                -4, null, this.add_mesh.bind(this), [300, 150, 200],
-                "molecular layer", color_mtypes.basket_cell, 100, [150, 350-545, 100], 0.5,
-                true, false, this.light_background
-            );
-            new CellPositions("src/assets/cereb-circuit/", this.add_points.bind(this), 600, 0.5,
-                [150.0, 350.0, 100.0]);
+        new Shape(
+            -2, null, this.add_mesh.bind(this), [300, 200, 200],
+            "dcn layer", color_mtypes.dcn_p, 100, [150, 150, 100], 0.5,
+            false, false, this.light_background
+        );
+        new Shape(
+            -3, null, this.add_mesh.bind(this), [300, 130, 200],
+            "granular layer", [0.7, 0.15, 0.15, 1.0], 100, [150, -50, 100], 0.5,
+            false, false, this.light_background
+        );
+        new Shape(
+            -4, null, this.add_mesh.bind(this), [300, 15, 200],
+            "purkinje layer", color_mtypes.purkinje_cell, 100, [150, 350-530, 100], 0.5,
+            false, false, this.light_background
+        );
+        new Shape(
+            -5, null, this.add_mesh.bind(this), [300, 150, 200],
+            "molecular layer", color_mtypes.basket_cell, 100, [150, 350-545, 100], 0.5,
+            false, false, this.light_background
+        );
+        new CellPositions("src/assets/cereb-circuit/", this.add_points.bind(this), 600, 0.5,
+            [150.0, 350.0, 100.0]);
     }
 
     add_mesh(id, mesh, is_root){
