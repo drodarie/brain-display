@@ -68,7 +68,7 @@ export class CellPositions {
         this.offset = offset;
         this.geometry = null;
         this.mesh = null;
-        this.sphere_type = SphereTypes.circle;
+        this.sphere_type = SphereTypes.blended;
         this.color_map = Colormaps.regions;
         this.z_order = z_order;
         this.callback = callback;

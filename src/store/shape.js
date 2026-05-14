@@ -70,8 +70,7 @@ export class Shape {
         if (this.mesh === null) return;
 
         if (this.is_root) {
-            // root mesh is not transparent
-            this.mesh.material.blending = THREE.AdditiveBlending;
+            this.mesh.material.blending = THREE.NoBlending;
             this.mesh.material.transparent = false;
         } else if (this.blended) {
             this.mesh.material.blending = THREE.AdditiveBlending;
