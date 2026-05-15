@@ -45,7 +45,12 @@ export let VerticalBlurShader = {
 			"sum += texture( tDiffuse, vec2( vUv.x, vUv.y + 6.0 * v) ) * 0.0487645;",
 			"sum += texture( tDiffuse, vec2( vUv.x, vUv.y + 7.0 * v) ) * 0.04132557;",
 			"sum += texture( tDiffuse, vec2( vUv.x, vUv.y + 8.0 * v) ) * 0.03414088;",
-			"gl_FragColor = sum*glowSc;",
+			// Only RGB carries the cell glow; force alpha=1.0 so the glow texture never
+			// contributes to the final framebuffer alpha. Old threejs used RGBFormat
+			// (WebGL1 RGB texture always samples with alpha=1, but modern RGBA stores the
+			// accumulated clear-color alpha and would propagate glowSc into the alpha
+			// channel of every pixel, making mesh rendering glowSc-dependent).
+			"gl_FragColor = vec4(sum.rgb * glowSc, 1.0);",
 		"}"
 
 	].join("\n")

@@ -29,8 +29,8 @@ export class Shape {
         this.geometry = null;
         this.mesh = null;
         this.z_order = z_order;
-        this.blended = blended;
-        this.is_root = is_root;
+        this.blended = blended;  // if true, renders as fresnel-like transparent, otherwise opaque
+        this.is_root = is_root;  // main meshes has specific rendering
         this.callback = callback;
         if (filename !== null){
             this.size = [0, 0, 0];
@@ -70,6 +70,8 @@ export class Shape {
         if (this.mesh === null) return;
 
         if (this.is_root) {
+            // Use NoBlending to reproduce the behavior of threejs r89
+            // when mesh are not transparent
             this.mesh.material.blending = THREE.NoBlending;
             this.mesh.material.transparent = false;
         } else if (this.blended) {
@@ -77,6 +79,7 @@ export class Shape {
             this.mesh.material.depthTest = false;
             this.mesh.material.transparent = true;
         } else {
+            // Same as the root mesh
             this.mesh.material.blending = THREE.NoBlending;
             this.mesh.material.depthTest = true;
             this.mesh.material.transparent = false;

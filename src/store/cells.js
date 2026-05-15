@@ -97,7 +97,7 @@ export class CellPositions {
             let caR = new Array(vertices_.length/3).fill(1.0);
             let caG = new Array(vertices_.length/3).fill(1.0);
             let caB = new Array(vertices_.length/3).fill(1.0);
-            let caA = new Array(vertices_.length/3).fill(1.0);
+            let caA = new Array(vertices_.length/3).fill(0.209);
 
             this.geometry = new THREE.BufferGeometry();
             this.geometry.setAttribute("position", new THREE.Float32BufferAttribute(vertices_, 3));
@@ -118,7 +118,6 @@ export class CellPositions {
                     blending: THREE.AdditiveBlending,
                     depthTest: false,
                     transparent: true,
-                    alphaTest: 0.5,
                 })
             );
             this.mesh.dynamic = true;

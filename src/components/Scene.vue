@@ -6,9 +6,9 @@
   const world = new World();
 
   onMounted(() => {
-    target.value.appendChild(world.renderer.domElement);
     world.render_whole_brain();
     world.init(target.value);
+    window.world = world;
   });
 </script>
 

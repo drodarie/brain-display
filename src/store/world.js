@@ -28,14 +28,19 @@ export class World {
         // Secondary scene/camera that mirrors the main scene; used as bloom source.
         this.scene2 = new THREE.Scene();
         this.camera2 = new Camera( 40, window.innerWidth / window.innerHeight, 0.1, 1500);
-        this.glowSc = 2.0;
+        this.glowSc = 0.0;  // glow value of the points (meshes should be unaffected)
         this._init_composers();
 
-        this.light_background = true;
+        this.light_background = true;  // By default, will be dark because of toggle.
         this.toggle_background_color();
 
         this.renderer.setAnimationLoop( this.animate.bind(this) );
         this.eventListener = new EventListener(this.camera, this.renderer);
+    }
+
+    set_glowSc(v) {
+        this.glowSc = v;
+        if (this.vertBlur) this.vertBlur.uniforms.glowSc.value = v;
     }
 
     _init_composers() {
@@ -101,6 +106,7 @@ export class World {
     }
 
     init(container) {
+        container.appendChild(this.renderer.domElement);
         this.eventListener.init_interactions(container);
         window.addEventListener('resize', this._on_resize.bind(this), false);
         this._on_resize();
@@ -116,7 +122,7 @@ export class World {
             400, [528.0/2, -320.0/2, 456.0/2],
             1.0, false, true, this.light_background
         );
-        // new CellPositions("src/assets/mouse-brain/", this.add_points.bind(this));
+        new CellPositions("src/assets/mouse-brain/", this.add_points.bind(this));
     }
 
     render_column(){
