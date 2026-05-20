@@ -34,6 +34,10 @@ export class World {
         this.light_background = true;  // By default, will be dark because of toggle.
         this.toggle_background_color();
 
+        this.raycaster = new THREE.Raycaster();
+        this._lastMouseX = NaN;
+        this._lastMouseY = NaN;
+
         this.renderer.setAnimationLoop( this.animate.bind(this) );
         this.eventListener = new EventListener(this.camera, this.renderer);
     }
@@ -172,37 +176,41 @@ export class World {
     }
 
     click_on_points(){
-        let raycaster = new THREE.Raycaster();
-        raycaster.setFromCamera(this.eventListener.mouseV2, this.camera);
+        const mx = this.eventListener.mouseV2.x;
+        const my = this.eventListener.mouseV2.y;
+        if (mx === this._lastMouseX && my === this._lastMouseY) return;
+        this._lastMouseX = mx;
+        this._lastMouseY = my;
 
-        let intersects = raycaster.intersectObjects( [this.points] );
-        if(intersects.length>0) {
-            let minDist = Infinity;
-            let bestIdx = -1;
-            for(let iintersects=0; iintersects < intersects.length; ++iintersects){
-                    if(
-                        intersects[iintersects].distance < minDist
-                        && this.points.geometry.attributes.ex.array[intersects[iintersects].index]>0.5 // is point visible
-                    ){
-                        minDist = intersects[iintersects].distance;
-                        bestIdx = intersects[iintersects].index;
-                    }
-                }
-            if(this.selected[0] >=0) {
-                // reset to old size and old alpha
-                this.points.geometry.attributes.size.array[this.selected[0]] = this.selected[1];
-                this.points.geometry.attributes.caA.array[this.selected[0]] = this.selected[2];
+        // Scale threshold with zoom so edge/far cells are as easy to pick as near ones.
+        this.raycaster.params.Points.threshold = this.eventListener.zoom * 0.003;
+        this.raycaster.setFromCamera(this.eventListener.mouseV2, this.camera);
+
+        let intersects = this.raycaster.intersectObjects( [this.points] );
+        // intersects is sorted by ascending distance; first visible hit is the best.
+        let bestIdx = -1;
+        for (let i = 0; i < intersects.length; ++i) {
+            if (this.points.geometry.attributes.ex.array[intersects[i].index] > 0.5) {
+                bestIdx = intersects[i].index;
+                break;
             }
-            this.selected[0] = bestIdx;
-            if(bestIdx >= 0){
-                this.selected[2] = this.points.geometry.attributes.caA.array[bestIdx];
-                this.selected[1] = this.points.geometry.attributes.size.array[bestIdx];
-                this.points.geometry.attributes.size.array[bestIdx] *= 1.5;
-                this.points.geometry.attributes.caA.array[bestIdx] = 2.0;
-            }
-            this.points.geometry.attributes.caA.needsUpdate = true;
-            this.points.geometry.attributes.size.needsUpdate = true;
         }
+        if (bestIdx === this.selected[0]) return;
+
+        if (this.selected[0] >= 0) {
+            // reset previous selected point to its old size and old alpha
+            this.points.geometry.attributes.size.array[this.selected[0]] = this.selected[1];
+            this.points.geometry.attributes.caA.array[this.selected[0]] = this.selected[2];
+        }
+        this.selected[0] = bestIdx;
+        if (bestIdx >= 0) {
+            this.selected[2] = this.points.geometry.attributes.caA.array[bestIdx];
+            this.selected[1] = this.points.geometry.attributes.size.array[bestIdx];
+            this.points.geometry.attributes.size.array[bestIdx] *= 1.5;
+            this.points.geometry.attributes.caA.array[bestIdx] = 2.0;
+        }
+        this.points.geometry.attributes.caA.needsUpdate = true;
+        this.points.geometry.attributes.size.needsUpdate = true;
     }
 
     get_root_color(){

@@ -6,7 +6,7 @@
   const world = new World();
 
   onMounted(() => {
-    world.render_whole_brain();
+    world.render_column();
     world.init(target.value);
     window.world = world;
   });
