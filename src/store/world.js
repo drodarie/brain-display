@@ -36,7 +36,7 @@ export class World {
 
         this.mesh_classes = [];
 
-        this.point_scale = 5.0;
+        this.point_scale = 5.0;  // point radius scaling factor.
         this.point_rendering = "blended";
         this.point_colormap = "regions";
         this.point_classes = [];
@@ -47,11 +47,6 @@ export class World {
 
         this.renderer.setAnimationLoop( this.animate.bind(this) );
         this.eventListener = new EventListener(this.camera, this.renderer);
-    }
-
-    set_glowSc(v) {
-        this.glowSc = v;
-        if (this.vertBlur) this.vertBlur.uniforms.glowSc.value = v;
     }
 
     _init_composers() {
@@ -90,6 +85,18 @@ export class World {
         this.horizBlur.uniforms.h.value = 2.0 / size.x;
         this.vertBlur.uniforms.v.value = 2.0 / size.y;
         this.blendPass.uniforms.tDiffuse2.value = this.composer2.renderTarget2.texture;
+    }
+
+    set_glowSc(v) {
+        this.glowSc = v;
+        if (this.vertBlur) this.vertBlur.uniforms.glowSc.value = v;
+    }
+
+    set_point_radius_scale(s){
+        this.point_scale = s;
+        for (let i in this.point_classes){
+            this.point_classes[i].update_radius_scale(this.point_scale);
+        }
     }
 
     toggle_background_color(){

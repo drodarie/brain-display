@@ -218,8 +218,9 @@ export class CellPositions {
     }
 
     update_radius_scale(radius_scale){
-        for (let i = 0; i < this.geometry.attributes.size.length; i = i + 1) {
-            this.geometry.attributes.size.array[i] =  this.geometry.attributes.size.array[i] / this.radius_scale * radius_scale;
+        if (!this.geometry) return;
+        for (let i = 0; i < this.geometry.attributes.size.array.length; i++) {
+            this.geometry.attributes.size.array[i] = this.geometry.attributes.size.array[i] / this.radius_scale * radius_scale;
         }
         this.geometry.attributes.size.needsUpdate = true;
         this.radius_scale = radius_scale;
