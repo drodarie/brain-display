@@ -31,7 +31,7 @@ export class World {
         this.glowSc = 0.0;  // glow value of the points (meshes should be unaffected)
         this._init_composers();
 
-        this.light_background = false;  // By default, will be dark because of toggle.
+        this.light_background = true;  // By default, will be dark because of toggle.
         this.toggle_background_color();
 
         this.mesh_classes = [];
@@ -160,39 +160,41 @@ export class World {
     }
 
     render_column(){
-        new Shape(
+        this.mesh_classes.push(new Shape(
                 -1, null, this.add_mesh.bind(this), [300, 200, 200],
                 "io layer", color_mtypes.io, 100, [150.0, 350.0, 100.0], 0.5,
             false, false, this.light_background
-            );
-        new Shape(
+
+        ));
+        this.mesh_classes.push(new Shape(
             -2, null, this.add_mesh.bind(this), [300, 200, 200],
             "dcn layer", color_mtypes.dcn_p, 100, [150, 150, 100], 0.5,
             false, false, this.light_background
-        );
-        new Shape(
+        ));
+        this.mesh_classes.push(new Shape(
             -3, null, this.add_mesh.bind(this), [300, 130, 200],
             "granular layer", [0.7, 0.15, 0.15, 1.0], 100, [150, -50, 100], 0.5,
             false, false, this.light_background
-        );
-        new Shape(
+        ));
+        this.mesh_classes.push(new Shape(
             -4, null, this.add_mesh.bind(this), [300, 15, 200],
             "purkinje layer", color_mtypes.purkinje_cell, 100, [150, 350-530, 100], 0.5,
             false, false, this.light_background
-        );
-        new Shape(
+        ));
+        this.mesh_classes.push(new Shape(
             -5, null, this.add_mesh.bind(this), [300, 150, 200],
             "molecular layer", color_mtypes.basket_cell, 100, [150, 350-545, 100], 0.5,
             false, false, this.light_background
-        );
-        new CellPositions(
+        ));
+        this.point_classes.push(new CellPositions(
             "src/assets/cereb-circuit/",
             this.add_points.bind(this),
             600,
             0.5,
             Colormaps[this.point_colormap],
             this.point_scale,
-            [150.0, 350.0, 100.0]);
+            [150.0, 350.0, 100.0]
+        ));
     }
 
     add_mesh(id, mesh, is_root){
@@ -253,7 +255,7 @@ export class World {
     }
 
     get_root_color(){
-        return 0.6 * (1.0 - Math.exp(-(this.eventListener.zoom - 450.0) * 0.0030));
+        return Math.max(0.0, 0.6 * (1.0 - Math.exp(-(this.eventListener.zoom - 450.0) * 0.0030)));
     }
 
     animate() {
@@ -274,7 +276,7 @@ export class World {
                 mesh.material.uniforms.camVz.value = this.camera.translation[2] - this.camera.glob_position[2];
                 if (this.loaded_meshes[i][1]) {
                     // root mesh color is based on zoom.
-                    let color = 0.6 * (1.0 - Math.exp(-(this.eventListener.zoom - 450.0) * 0.0030));
+                    let color = Math.max(0.0, 0.6 * (1.0 - Math.exp(-(this.eventListener.zoom - 450.0) * 0.0030)));
                     for (let j = 0; j < mesh.geometry.attributes.caR.array.length; j++) {
                         mesh.geometry.attributes.caR.array[j] = color;
                         mesh.geometry.attributes.caG.array[j] = color;
