@@ -65,7 +65,6 @@ export class CellPositions {
     constructor(folder, callback, z_order = 999,
                 sc = 1.0 / 25.0,
                 color_map = Colormaps.regions,
-                rendering_type = SphereTypes.blended,
                 radius_scale = 5.0,
                 offset = [0.0, 0.0, 0.0],
                 dark_background = true) {
@@ -74,12 +73,14 @@ export class CellPositions {
         this.offset = offset;
         this.geometry = null;
         this.mesh = null;
-        this.sphere_type = rendering_type;
         this.color_map = color_map;
         this.radius_scale = radius_scale; // scale factor of the points radius (can be changed by the user)
         this.z_order = z_order;
         this.callback = callback;
         this.folder = folder;
+        this.dark_background = dark_background;
+        this.sphere_type = SphereTypes.blended;
+        this._colormap_data = null;
         this.open_points(folder + "positionsSIM.raw");
     }
 
@@ -129,7 +130,6 @@ export class CellPositions {
             );
             this.mesh.dynamic = true;
             this.mesh.renderOrder = this.z_order;
-            this.change_sphere_type(this.sphere_type);
             this.load_colormap(this.color_map);
             this.load_radii();
             this.callback(this.mesh);
@@ -138,6 +138,7 @@ export class CellPositions {
 
     change_sphere_type(sphere_type, dark_background = true){
         this.sphere_type = sphere_type;
+        this.dark_background = dark_background;
         if(this.geometry !== null && this.mesh !== null){
             if(sphere_type === SphereTypes.sphere){
                 for (let i = 0; i < this.geometry.attributes.textured.array.length; i ++ ) {
@@ -163,6 +164,7 @@ export class CellPositions {
             }
             this.geometry.attributes.textured.needsUpdate = true;
             this.mesh.material.needsUpdate = true;
+            this._apply_point_colors();
         }
     }
 
@@ -183,18 +185,25 @@ export class CellPositions {
     update_point_colors(event){
         var arrayBuffer = event.currentTarget.response;
         if (arrayBuffer && this.geometry !== null) {
-            let byteArrayTMP = new Int16Array(arrayBuffer);
-            for (let i = 0; i < byteArrayTMP.length; i = i + 1) {
-                let clr = this.get_color(parseInt(byteArrayTMP[i]));
-                this.geometry.attributes.caR.array[i] = clr[0];
-                this.geometry.attributes.caG.array[i] = clr[1];
-                this.geometry.attributes.caB.array[i] = clr[2];
-            }
-            this.geometry.attributes.caR.needsUpdate = true;
-            this.geometry.attributes.caG.needsUpdate = true;
-            this.geometry.attributes.caB.needsUpdate = true;
-            this.geometry.attributes.caA.needsUpdate = true;
+            this._colormap_data = new Int16Array(arrayBuffer);
+            this._apply_point_colors();
         }
+    }
+
+    _apply_point_colors(){
+        if (!this._colormap_data || !this.geometry) return;
+        const invert = !this.dark_background && this.sphere_type === SphereTypes.blended;
+        for (let i = 0; i < this._colormap_data.length; i++) {
+            let clr = this.get_color(parseInt(this._colormap_data[i]));
+            if (invert) { clr[0] = 1.0 - clr[0]; clr[1] = 1.0 - clr[1]; clr[2] = 1.0 - clr[2]; }
+            this.geometry.attributes.caR.array[i] = clr[0];
+            this.geometry.attributes.caG.array[i] = clr[1];
+            this.geometry.attributes.caB.array[i] = clr[2];
+        }
+        this.geometry.attributes.caR.needsUpdate = true;
+        this.geometry.attributes.caG.needsUpdate = true;
+        this.geometry.attributes.caB.needsUpdate = true;
+        this.geometry.attributes.caA.needsUpdate = true;
     }
 
     set_point_radii(event) {

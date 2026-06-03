@@ -114,8 +114,8 @@ export class World {
         const inv = this.light_background ? -1.0 : 1.0;
         this.horizBlur.uniforms.inv.value = inv;
         this.blendPass.uniforms.inv.value = inv;
-        if (this.points !== null && this.point_rendering === "blended"){
-            this.points.material.blending = this.light_background ? THREE.SubtractiveBlending : THREE.AdditiveBlending;
+        for (let i in this.point_classes){
+            this.point_classes[i].change_sphere_type(SphereTypes[this.point_rendering], !this.light_background);
         }
     }
 
@@ -154,7 +154,6 @@ export class World {
             999,
             1.0 / 25.0,
             Colormaps[this.point_colormap],
-            SphereTypes[this.point_rendering],
             this.point_scale,
             )
         );
@@ -192,7 +191,6 @@ export class World {
             600,
             0.5,
             Colormaps[this.point_colormap],
-            SphereTypes[this.point_rendering],
             this.point_scale,
             [150.0, 350.0, 100.0]);
     }
@@ -208,9 +206,8 @@ export class World {
 
     add_points(points){
         this.points = points;
-        if (this.point_rendering === "blended" && this.light_background){
-            this.points.material.blending = THREE.SubtractiveBlending;
-            this.points.material.needsUpdate = true;
+        for (let i in this.point_classes){
+            this.point_classes[i].change_sphere_type(SphereTypes[this.point_rendering], !this.light_background);
         }
         this.scene.add( points );
         this.scene2.add( points.clone() );
