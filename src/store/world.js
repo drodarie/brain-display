@@ -31,7 +31,7 @@ export class World {
         this.glowSc = 0.0;  // glow value of the points (meshes should be unaffected)
         this._init_composers();
 
-        this.light_background = true;  // By default, will be dark because of toggle.
+        this.light_background = false;  // By default, will be dark because of toggle.
         this.toggle_background_color();
 
         this.raycaster = new THREE.Raycaster();

@@ -28,10 +28,10 @@ export let MeshBlendShader = {
         "void main() {",
             "float cam2norm = abs(vNormal.x * vcamV.x + vNormal.y * vcamV.y + vNormal.z * vcamV.z );",
             "if(totRGBf<0.5){",
-                "gl_FragColor = (1.0 - 1.0 * cam2norm) * vC;",
+                "gl_FragColor = vec4((1.0 - 1.0 * cam2norm) * vC.rgb, 1.0);",
             "}",
             "else {",
-                "gl_FragColor = (cam2norm) * vC + (1.0 - vC);",
+                "gl_FragColor = vec4((cam2norm) * vC.rgb + (1.0 - vC.rgb), 1.0);",
             "}",
         "}"
     ].join("\n")
