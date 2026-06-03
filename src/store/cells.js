@@ -62,14 +62,21 @@ export let color_mtypes = {
 };
 
 export class CellPositions {
-    constructor(folder, callback, z_order = 999, sc = 1.0 / 25.0, offset = [0.0, 0.0, 0.0]) {
-        this.size = (window.innerHeight / 800.0);
-        this.sc = sc;
+    constructor(folder, callback, z_order = 999,
+                sc = 1.0 / 25.0,
+                color_map = Colormaps.regions,
+                rendering_type = SphereTypes.blended,
+                radius_scale = 5.0,
+                offset = [0.0, 0.0, 0.0],
+                dark_background = true) {
+        this.size = (window.innerHeight / 800.0);  // original scale of the points radius
+        this.sc = sc;  // scale of the positions coordinates
         this.offset = offset;
         this.geometry = null;
         this.mesh = null;
-        this.sphere_type = SphereTypes.blended;
-        this.color_map = Colormaps.regions;
+        this.sphere_type = rendering_type;
+        this.color_map = color_map;
+        this.radius_scale = radius_scale; // scale factor of the points radius (can be changed by the user)
         this.z_order = z_order;
         this.callback = callback;
         this.folder = folder;
@@ -92,7 +99,7 @@ export class CellPositions {
 
             let textured = new Array(vertices_.length/3).fill(0.5);
             let ex = new Array(vertices_.length/3).fill(1);  // visible or not
-            let size = new Array(vertices_.length/3).fill(this.size * 10.0);
+            let size = new Array(vertices_.length/3).fill(this.size * this.radius_scale);
 
             let caR = new Array(vertices_.length/3).fill(1.0);
             let caG = new Array(vertices_.length/3).fill(1.0);
@@ -129,9 +136,9 @@ export class CellPositions {
         }
     }
 
-    change_sphere_type(sphere_type){
+    change_sphere_type(sphere_type, dark_background = true){
         this.sphere_type = sphere_type;
-        if(this.geometry !== null){
+        if(this.geometry !== null && this.mesh !== null){
             if(sphere_type === SphereTypes.sphere){
                 for (let i = 0; i < this.geometry.attributes.textured.array.length; i ++ ) {
                     this.geometry.attributes.textured.array[ i ] = 1.0;
@@ -143,7 +150,7 @@ export class CellPositions {
                 for (let i = 0; i < this.geometry.attributes.textured.array.length; i ++ ) {
                     this.geometry.attributes.textured.array[ i ] = 0.5;
                 }
-                this.mesh.material.blending = THREE.AdditiveBlending;
+                this.mesh.material.blending = dark_background ? THREE.AdditiveBlending : THREE.SubtractiveBlending;
                 this.mesh.material.depthTest = false;
                 this.mesh.material.transparent = true;
             }else if(sphere_type === SphereTypes.circle){
@@ -155,6 +162,7 @@ export class CellPositions {
                 this.mesh.material.transparent = false;
             }
             this.geometry.attributes.textured.needsUpdate = true;
+            this.mesh.material.needsUpdate = true;
         }
     }
 
@@ -189,16 +197,25 @@ export class CellPositions {
         }
     }
 
-    update_point_radii(event) {
+    set_point_radii(event) {
         var arrayBuffer = event.currentTarget.response;
         if (arrayBuffer.byteLength % 4 === 0 && this.geometry !== null) {
             let byteArrayTMP = new Float32Array(arrayBuffer);
             for (let i = 0; i < byteArrayTMP.length; i = i + 1) {
-                this.geometry.attributes.size.array[i] = this.size * parseFloat(byteArrayTMP[i]) * 5.0;
+                this.geometry.attributes.size.array[i] = this.size * this.radius_scale * parseFloat(byteArrayTMP[i]);
             }
             this.geometry.attributes.size.needsUpdate = true;
         }
     }
+
+    update_radius_scale(radius_scale){
+        for (let i = 0; i < this.geometry.attributes.size.length; i = i + 1) {
+            this.geometry.attributes.size.array[i] =  this.geometry.attributes.size.array[i] / this.radius_scale * radius_scale;
+        }
+        this.geometry.attributes.size.needsUpdate = true;
+        this.radius_scale = radius_scale;
+    }
+
 
     open_points(address_){
         let requestPOINTS = new XMLHttpRequest();
@@ -221,7 +238,7 @@ export class CellPositions {
         let requestNEUPARA = new XMLHttpRequest();
         requestNEUPARA.open( 'GET', this.folder + "radiusSIM.raw", true );
         requestNEUPARA.responseType = "arraybuffer";
-        requestNEUPARA.addEventListener( 'load', this.update_point_radii.bind(this), false);
+        requestNEUPARA.addEventListener( 'load', this.set_point_radii.bind(this), false);
         requestNEUPARA.send(null);
     }
 }

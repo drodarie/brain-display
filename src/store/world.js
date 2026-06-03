@@ -1,10 +1,10 @@
 import * as THREE from "three";
-import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
-import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
-import { ShaderPass } from "three/addons/postprocessing/ShaderPass.js";
+import {EffectComposer} from "three/addons/postprocessing/EffectComposer.js";
+import {RenderPass} from "three/addons/postprocessing/RenderPass.js";
+import {ShaderPass} from "three/addons/postprocessing/ShaderPass.js";
 import {EventListener} from "@/store/interact.js";
 import {Camera} from "@/store/camera.js";
-import {CellPositions, color_mtypes} from "@/store/cells.js";
+import {CellPositions, color_mtypes, Colormaps, SphereTypes} from "@/store/cells.js";
 import {Shape} from "@/store/shape.js";
 import {MeshBlendShader} from "@/store/shaders/MeshBlendShader.js";
 import {AdditiveBlendShader} from "@/store/shaders/AdditiveBlendShader.js";
@@ -33,6 +33,13 @@ export class World {
 
         this.light_background = false;  // By default, will be dark because of toggle.
         this.toggle_background_color();
+
+        this.mesh_classes = [];
+
+        this.point_scale = 5.0;
+        this.point_rendering = "blended";
+        this.point_colormap = "regions";
+        this.point_classes = [];
 
         this.raycaster = new THREE.Raycaster();
         this._lastMouseX = NaN;
@@ -107,6 +114,21 @@ export class World {
         const inv = this.light_background ? -1.0 : 1.0;
         this.horizBlur.uniforms.inv.value = inv;
         this.blendPass.uniforms.inv.value = inv;
+        if (this.points !== null && this.point_rendering === "blended"){
+            this.points.material.blending = this.light_background ? THREE.SubtractiveBlending : THREE.AdditiveBlending;
+        }
+    }
+
+    toggle_point_rendering(new_rendering){
+        if (new_rendering in SphereTypes){
+            this.point_rendering = new_rendering;
+            for (let i in this.point_classes){
+                this.point_classes[i].change_sphere_type(SphereTypes[this.point_rendering], !this.light_background);
+            }
+        }
+        else{
+            console.warn(`Rendering ${new_rendering} is not a supported rendering for points. Choose from ${SphereTypes.keys()}`)
+        }
     }
 
     init(container) {
@@ -118,15 +140,24 @@ export class World {
 
     render_whole_brain() {
         const c = this.get_root_color();
-        new Shape(
+        this.mesh_classes.push(new Shape(
             997,
             "src/assets/meshesMS/decimated_smoothed_mesh_997.obj",
             this.add_mesh.bind(this), null,
             "root", [c, c, c],
             400, [528.0/2, -320.0/2, 456.0/2],
             1.0, false, true, this.light_background
+        ));
+        this.point_classes.push(new CellPositions(
+            "src/assets/mouse-brain/",
+            this.add_points.bind(this),
+            999,
+            1.0 / 25.0,
+            Colormaps[this.point_colormap],
+            SphereTypes[this.point_rendering],
+            this.point_scale,
+            )
         );
-        new CellPositions("src/assets/mouse-brain/", this.add_points.bind(this));
     }
 
     render_column(){
@@ -155,7 +186,14 @@ export class World {
             "molecular layer", color_mtypes.basket_cell, 100, [150, 350-545, 100], 0.5,
             false, false, this.light_background
         );
-        new CellPositions("src/assets/cereb-circuit/", this.add_points.bind(this), 600, 0.5,
+        new CellPositions(
+            "src/assets/cereb-circuit/",
+            this.add_points.bind(this),
+            600,
+            0.5,
+            Colormaps[this.point_colormap],
+            SphereTypes[this.point_rendering],
+            this.point_scale,
             [150.0, 350.0, 100.0]);
     }
 
@@ -170,6 +208,10 @@ export class World {
 
     add_points(points){
         this.points = points;
+        if (this.point_rendering === "blended" && this.light_background){
+            this.points.material.blending = THREE.SubtractiveBlending;
+            this.points.material.needsUpdate = true;
+        }
         this.scene.add( points );
         this.scene2.add( points.clone() );
         points.onBeforeRender = function (renderer) { renderer.clearDepth(); };
