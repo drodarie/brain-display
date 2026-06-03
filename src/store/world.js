@@ -99,14 +99,16 @@ export class World {
         this.renderer.setClearColor( new THREE.Color(col, col, col), 1 );
         MeshBlendShader.uniforms.totRGB.value = col;
         for (let i in this.loaded_meshes) {
-            let mesh = this.loaded_meshes[i][0];
-            if (!mesh.is_root){
+            let [mesh, is_root] = this.loaded_meshes[i];
+            if (!is_root){
                 for (let j = 0; j < mesh.geometry.attributes.caR.array.length; j++) {
                     mesh.geometry.attributes.caR.array[j] = 1.0 - mesh.geometry.attributes.caR.array[j];
                     mesh.geometry.attributes.caG.array[j] = 1.0 - mesh.geometry.attributes.caG.array[j];
                     mesh.geometry.attributes.caB.array[j] = 1.0 - mesh.geometry.attributes.caB.array[j];
                 }
-                mesh.geometry.needsUpdate = true;
+                mesh.geometry.attributes.caR.needsUpdate = true;
+                mesh.geometry.attributes.caG.needsUpdate = true;
+                mesh.geometry.attributes.caB.needsUpdate = true;
             }
             mesh.material.uniforms.totRGB.value = col;
             mesh.material.needsUpdate = true;
