@@ -142,6 +142,7 @@ export class CellPositions {
         if(this.geometry !== null && this.mesh !== null){
             if(sphere_type === SphereTypes.sphere){
                 for (let i = 0; i < this.geometry.attributes.textured.array.length; i ++ ) {
+                    this.geometry.attributes.caA.array[i] = 1.0;
                     this.geometry.attributes.textured.array[ i ] = 1.0;
                 }
                 this.mesh.material.blending = THREE.NormalBlending;
@@ -149,6 +150,7 @@ export class CellPositions {
                 this.mesh.material.transparent = false;
             }else if(sphere_type === SphereTypes.blended){
                 for (let i = 0; i < this.geometry.attributes.textured.array.length; i ++ ) {
+                    this.geometry.attributes.caA.array[i] = 0.209;
                     this.geometry.attributes.textured.array[ i ] = 0.5;
                 }
                 this.mesh.material.blending = dark_background ? THREE.AdditiveBlending : THREE.SubtractiveBlending;
@@ -156,12 +158,14 @@ export class CellPositions {
                 this.mesh.material.transparent = true;
             }else if(sphere_type === SphereTypes.circle){
                 for( var i = 0; i < this.geometry.attributes.textured.array.length; i ++ ) {
+                    this.geometry.attributes.caA.array[i] = 1.0;
                     this.geometry.attributes.textured.array[ i ] = 0.0;
                 }
                 this.mesh.material.blending = THREE.NormalBlending;
                 this.mesh.material.depthTest = true;
                 this.mesh.material.transparent = false;
             }
+            this.geometry.attributes.caA.needsUpdate = true;
             this.geometry.attributes.textured.needsUpdate = true;
             this.mesh.material.needsUpdate = true;
             this._apply_point_colors();
