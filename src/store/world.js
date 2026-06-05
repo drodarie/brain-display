@@ -136,7 +136,19 @@ export class World {
             }
         }
         else{
-            console.warn(`Rendering ${new_rendering} is not a supported rendering for points. Choose from ${SphereTypes.keys()}`)
+            console.warn(`Rendering ${new_rendering} is not a supported rendering for points. Choose from ${Object.keys(SphereTypes)}`)
+        }
+    }
+
+    toggle_point_color(new_colormap){
+        if(new_colormap in Colormaps){
+            this.point_colormap = new_colormap;
+            for (let i in this.point_classes){
+                this.point_classes[i].load_colormap(Colormaps[new_colormap]);
+            }
+        }
+        else{
+            console.warn(`Colormap ${new_colormap} is not a supported for points. Choose from ${Object.keys(Colormaps)}`)
         }
     }
 

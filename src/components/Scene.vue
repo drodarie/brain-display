@@ -1,14 +1,12 @@
 <script setup>
-  import {onMounted, ref} from "vue";
-  import {World} from "@/store/world.js";
+  import { onMounted, ref, inject } from "vue";
 
   const target = ref();
-  const world = new World();
+  const world = inject('world');
 
   onMounted(() => {
     world.render_column();
     world.init(target.value);
-    window.world = world;
   });
 </script>
 

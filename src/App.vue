@@ -1,5 +1,12 @@
 <script setup>
-import SceneVue from './components/Scene.vue'
+import { provide } from 'vue';
+import SceneVue from './components/Scene.vue';
+import LeftSideNav from "@/components/LeftSideNav.vue";
+import { World } from "@/store/world.js";
+
+const world = new World();
+provide('world', world);
+window.world = world;
 </script>
 
 <template>
@@ -8,6 +15,7 @@ import SceneVue from './components/Scene.vue'
 <!--  </header>-->
 
   <main>
+    <LeftSideNav />
     <SceneVue />
   </main>
 </template>
