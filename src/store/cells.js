@@ -86,13 +86,12 @@ export class CellPositions {
 
     load_points(event) {
         let arrayBuffer = event.currentTarget.response;
-        let columnSubdiv = 3;
         let vertices_ = [];
 
-        if (arrayBuffer) {
+        if (arrayBuffer.byteLength % 12 === 0) {
             let byteArray = new Float32Array(arrayBuffer);
 
-            for (let i = 0; i < byteArray.length; i = i + columnSubdiv) {
+            for (let i = 0; i < byteArray.length; i = i + 3) {
                 vertices_.push(this.sc * (byteArray[i] - this.offset[0]));
                 vertices_.push(this.sc * (byteArray[i + 1] - this.offset[1]));
                 vertices_.push(this.sc * (byteArray[i + 2] - this.offset[2]));
@@ -133,6 +132,9 @@ export class CellPositions {
             this.load_colormap(this.color_map);
             this.load_radii();
             this.callback(this.mesh);
+        }
+        else {
+            console.error(`Size of position array loaded from file: (${arrayBuffer.byteLength} bytes) is not a multiple of 12. Expected trios of float32.`);
         }
     }
 
@@ -254,5 +256,75 @@ export class CellPositions {
         requestNEUPARA.responseType = "arraybuffer";
         requestNEUPARA.addEventListener( 'load', this.set_point_radii.bind(this), false);
         requestNEUPARA.send(null);
+    }
+
+    get_spike_times(event) {
+        var arrayBuffer = event.currentTarget.response;
+        this.spike_times = [];
+        this.spike_senders = [];
+        this.spikeIndex = 0;
+        // Each spike is a (time, sender_id) pair: 2 × float32 = 8 bytes
+        if (arrayBuffer.byteLength % 8 === 0) {
+            let byteArrayTMP = new Float32Array(arrayBuffer);
+            for (let i = 0; i < byteArrayTMP.length; i = i + 2) {
+                this.spike_times.push(byteArrayTMP[i]);
+                this.spike_senders.push(~~byteArrayTMP[i + 1]);  // convert to int
+            }
+        } else {
+            console.error(`Spike file size (${arrayBuffer.byteLength} bytes) is not a multiple of 8. Expected pairs of float32.`);
+        }
+        if (this.spike_times.length > 0){
+            let timeNow =  new Date().getTime();
+            this.lastSpikeUpdateTime = timeNow;
+            this.refTimeSpikes = timeNow;
+            if (this._sim_callback) this._sim_callback();
+        }
+    }
+
+    load_simulation(simulation, callback) {
+        this._sim_callback = callback || null;
+        let requestSim = new XMLHttpRequest();
+        requestSim.open( 'GET', this.folder + simulation + "_spikes.raw", true );
+        requestSim.responseType = "arraybuffer";
+        requestSim.addEventListener( 'load', this.get_spike_times.bind(this), false);
+        requestSim.send(null);
+    }
+
+    update_simulation(num_s_per_s=0.1, tauDecay=1.0){
+        if (this.spike_times === undefined || this.spike_times.length === 0) return false;
+        if (this.spikeIndex >= this.spike_times.length) return false;
+
+        let timeNow = new Date().getTime();
+        let simTimeNow = (timeNow - this.refTimeSpikes) * num_s_per_s;
+        let simTimeLastUpdate = (this.lastSpikeUpdateTime - this.refTimeSpikes) * num_s_per_s;
+
+        // decay alpha of all points
+        let decayScaler = Math.exp(-(simTimeNow - simTimeLastUpdate) / tauDecay);
+        for (let v = 0; v < this.geometry.attributes.caA.array.length; v++) {
+            this.geometry.attributes.caA.array[v] *= decayScaler;
+            this.geometry.attributes.caA.array[v] = Math.max(0.1, this.geometry.attributes.caA.array[v]);
+        }
+
+        // light up neurons whose spike falls in (simTimeLastUpdate, simTimeNow]
+        while (this.spikeIndex < this.spike_times.length &&
+               this.spike_times[this.spikeIndex] <= simTimeNow) {
+            if (this.spike_times[this.spikeIndex] > simTimeLastUpdate) {
+                this.geometry.attributes.caA.array[this.spike_senders[this.spikeIndex]] = 1.0;
+            }
+            this.spikeIndex++;
+        }
+        if (this.spikeIndex >= this.spike_times.length) { // end of simulation
+            // reset caA
+            let old_caA = this.sphere_type === SphereTypes.blended ? 0.209: 1.0;
+            for (let v = 0; v < this.geometry.attributes.caA.array.length; v++) {
+                this.geometry.attributes.caA.array[v] = old_caA;
+            }
+            // free memory
+            this.spike_times = null;
+            this.spike_senders = null;
+        }
+        this.geometry.attributes.caA.needsUpdate = true;
+        this.lastSpikeUpdateTime = timeNow;
+        return true;
     }
 }

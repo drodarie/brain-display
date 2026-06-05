@@ -38,7 +38,7 @@ export class World {
 
         this.point_scale = 5.0;  // point radius scaling factor.
         this.point_rendering = "blended";
-        this.point_colormap = "regions";
+        this.point_colormap = "mtypes";
         this.point_classes = [];
 
         this.raycaster = new THREE.Raycaster();
@@ -149,6 +149,15 @@ export class World {
         }
         else{
             console.warn(`Colormap ${new_colormap} is not a supported for points. Choose from ${Object.keys(Colormaps)}`)
+        }
+    }
+
+    launch_simulation(simulation){
+        this.is_simulation_running = false;
+        for (let i in this.point_classes){
+            this.point_classes[i].load_simulation(simulation, () => {
+                this.is_simulation_running = true;
+            });
         }
     }
 
@@ -316,6 +325,13 @@ export class World {
         }
         if (this.points !== null){
             this.click_on_points();
+            if (this.is_simulation_running){
+                let any_running = false;
+                for (let i in this.point_classes){
+                    if (this.point_classes[i].update_simulation()) any_running = true;
+                }
+                this.is_simulation_running = any_running;
+            }
         }
         this.composer2.render();
         this.finalComposer.render();
