@@ -290,7 +290,7 @@ export class CellPositions {
         requestSim.send(null);
     }
 
-    update_simulation(num_s_per_s=0.1, tauDecay=1.0){
+    update_simulation(num_s_per_s= 0.01, tauDecay= 1.0){
         if (this.spike_times === undefined || this.spike_times.length === 0) return false;
         if (this.spikeIndex >= this.spike_times.length) return false;
 
@@ -320,8 +320,8 @@ export class CellPositions {
                 this.geometry.attributes.caA.array[v] = old_caA;
             }
             // free memory
-            this.spike_times = null;
-            this.spike_senders = null;
+            this.spike_times = undefined;
+            this.spike_senders = undefined;
         }
         this.geometry.attributes.caA.needsUpdate = true;
         this.lastSpikeUpdateTime = timeNow;
