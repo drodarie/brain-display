@@ -13,12 +13,11 @@ function toggle_nav() {
   arrowStyle.transform = is_nav_open.value ? "rotate(180deg)" : "rotate(0deg)";
 }
 
-// World starts dark after its constructor calls toggle_background_color() once.
-const lightBackground = ref(false);
-const pointRendering = ref('blended');
-const pointColormap = ref('regions');
-const pointScale = ref(5.0);
-const glowSc = ref(0.0);
+const lightBackground = ref(world.light_background);
+const pointRendering = ref(world.point_rendering);
+const pointColormap = ref(world.point_colormap);
+const pointScale = ref(world.point_scale);
+const glowSc = ref(world.glowSc);
 
 function onToggleBackground() {
   lightBackground.value = !lightBackground.value;
