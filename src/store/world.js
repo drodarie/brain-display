@@ -192,28 +192,28 @@ export class World {
     render_column(){
         this.mesh_classes.push(new Shape(
                 -1, null, this.add_mesh.bind(this), [300, 200, 200],
-                "io layer", color_mtypes.io, 100, [150.0, 350.0, 100.0], 0.5,
+                "io layer", color_mtypes.io, 100, [0.0, 350.0, 0.0], 0.5,
             false, false, this.light_background
 
         ));
         this.mesh_classes.push(new Shape(
             -2, null, this.add_mesh.bind(this), [300, 200, 200],
-            "dcn layer", color_mtypes.dcn_p, 100, [150, 150, 100], 0.5,
+            "dcn layer", color_mtypes.dcn_p, 100, [0, 150, 0], 0.5,
             false, false, this.light_background
         ));
         this.mesh_classes.push(new Shape(
             -3, null, this.add_mesh.bind(this), [300, 130, 200],
-            "granular layer", [0.7, 0.15, 0.15, 1.0], 100, [150, -50, 100], 0.5,
+            "granular layer", [0.7, 0.15, 0.15, 1.0], 100, [0, -50, 0], 0.5,
             false, false, this.light_background
         ));
         this.mesh_classes.push(new Shape(
             -4, null, this.add_mesh.bind(this), [300, 15, 200],
-            "purkinje layer", color_mtypes.purkinje_cell, 100, [150, 350-530, 100], 0.5,
+            "purkinje layer", color_mtypes.purkinje_cell, 100, [0, 350-530, 0], 0.5,
             false, false, this.light_background
         ));
         this.mesh_classes.push(new Shape(
             -5, null, this.add_mesh.bind(this), [300, 150, 200],
-            "molecular layer", color_mtypes.basket_cell, 100, [150, 350-545, 100], 0.5,
+            "molecular layer", color_mtypes.basket_cell, 100, [0, 350-545, 0], 0.5,
             false, false, this.light_background
         ));
         this.point_classes.push(new CellPositions(
@@ -223,7 +223,7 @@ export class World {
             0.5,
             Colormaps[this.point_colormap],
             this.point_scale,
-            [150.0, 350.0, 100.0]
+            [0.0, 350.0, 0.0]
         ));
     }
 
@@ -234,6 +234,25 @@ export class World {
             this.updated = true;
             mesh.onBeforeRender = function( renderer ) { renderer.clearDepth(); };
         }
+        if (Object.keys(this.loaded_meshes).length >= this.mesh_classes.length) {
+            this.center_camera_on_scene();
+        }
+    }
+
+    center_camera_on_scene() {
+        const box = new THREE.Box3();
+        for (let id in this.loaded_meshes) {
+            box.expandByObject(this.loaded_meshes[id][0]);
+        }
+        if (box.isEmpty()) return;
+        const center = new THREE.Vector3();
+        box.getCenter(center);
+        this.eventListener.camera.translation[0] = center.x;
+        this.eventListener.camera.translation[1] = center.y;
+        this.eventListener.camera.translation[2] = center.z;
+        this.eventListener.camera.translation_old[0] = center.x;
+        this.eventListener.camera.translation_old[1] = center.y;
+        this.eventListener.camera.translation_old[2] = center.z;
     }
 
     add_points(points){
