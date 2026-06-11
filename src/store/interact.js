@@ -12,6 +12,7 @@ export class EventListener {
         this.mouse = {x:0, y:0};
         this.mouse_old = {x:0, y:0};
         this.zoom = 700.0;
+        this.orig_zoom = this.zoom;
         this.mouse_last = {x:0, y:0};
         this.mouse_speed= {x:0, y:0};
         this.mouse_is_down = [false,false,false,false,false,false,false,false,false,false];
@@ -42,9 +43,7 @@ export class EventListener {
             this.mouse_old.y = this.mouse.y;
             this.theta_old = this.theta;
             this.phi_old = this.phi;
-            this.camera.translation_old[0] = this.camera.translation[0];
-            this.camera.translation_old[1] = this.camera.translation[1];
-            this.camera.translation_old[2] = this.camera.translation[2];
+            this.camera.translation_old.copy(this.camera.translation);
         }
         this.mouse_is_down[event.button] = true;
     }
@@ -54,11 +53,12 @@ export class EventListener {
 
     onMouseWheel(event){
         this.zoom = this.zoom * (1 + Math.sign(event.deltaY) * 40.0 * 0.0015);
-        if(this.zoom < 10.0) {
-            this.zoom = 10.0;
+        if(this.zoom < this.orig_zoom / 100.) {
+            this.zoom = this.orig_zoom / 100.;
         }
-        if (this.zoom > 1300.0) {
-            this.zoom = 1300.0;
+        const max_ = Math.min(this.orig_zoom * 2.0, this.camera.far - 300.);
+        if (this.zoom > max_) {
+            this.zoom = max_;
         }
     }
 
@@ -83,12 +83,11 @@ export class EventListener {
 
     update_camera() {
         if (this.mouse_is_down[1] || this.mouse_is_down[2]) {
-            //this.camera.translation
             let dTr = this.zoom / 700.0;
             let Zvec = [
-                this.camera.translation[0] - this.camera.glob_position[0],
-                this.camera.translation[1] - this.camera.glob_position[1],
-                this.camera.translation[2] - this.camera.glob_position[2]
+                this.camera.translation.x - this.camera.glob_position.x,
+                this.camera.translation.y - this.camera.glob_position.y,
+                this.camera.translation.z - this.camera.glob_position.z
             ];
             let Yvec = [-Zvec[2], 0.0, Zvec[0]];
             let YvecNorm = Math.sqrt(Yvec[0] * Yvec[0] + Yvec[1] * Yvec[1] + Yvec[2] * Yvec[2]);
@@ -99,9 +98,9 @@ export class EventListener {
             ];
             let XvecNorm = Math.sqrt(Xvec[0] * Xvec[0] + Xvec[1] * Xvec[1] + Xvec[2] * Xvec[2]);
 
-            this.camera.translation[0] = this.camera.translation_old[0] - 0.5 * dTr * Yvec[0] * (this.mouse.x - this.mouse_old.x) / YvecNorm - 0.5 * dTr * Xvec[0] * (this.mouse.y - this.mouse_old.y) / XvecNorm;
-            this.camera.translation[1] = this.camera.translation_old[1] - 0.5 * dTr * Yvec[1] * (this.mouse.x - this.mouse_old.x) / YvecNorm - 0.5 * dTr * Xvec[1] * (this.mouse.y - this.mouse_old.y) / XvecNorm;
-            this.camera.translation[2] = this.camera.translation_old[2] - 0.5 * dTr * Yvec[2] * (this.mouse.x - this.mouse_old.x) / YvecNorm - 0.5 * dTr * Xvec[2] * (this.mouse.y - this.mouse_old.y) / XvecNorm;
+            this.camera.translation.x = this.camera.translation_old.x - 0.5 * dTr * Yvec[0] * (this.mouse.x - this.mouse_old.x) / YvecNorm - 0.5 * dTr * Xvec[0] * (this.mouse.y - this.mouse_old.y) / XvecNorm;
+            this.camera.translation.y = this.camera.translation_old.y - 0.5 * dTr * Yvec[1] * (this.mouse.x - this.mouse_old.x) / YvecNorm - 0.5 * dTr * Xvec[1] * (this.mouse.y - this.mouse_old.y) / XvecNorm;
+            this.camera.translation.z = this.camera.translation_old.z - 0.5 * dTr * Yvec[2] * (this.mouse.x - this.mouse_old.x) / YvecNorm - 0.5 * dTr * Xvec[2] * (this.mouse.y - this.mouse_old.y) / XvecNorm;
 
         }
         else if (this.mouse_is_down[0]) {
@@ -122,24 +121,11 @@ export class EventListener {
         this.mouse_last.x = this.mouse.x;
         this.mouse_last.y = this.mouse.y;
 
-        let old_glob_position = this.camera.glob_position;
-        this.camera.glob_position = [
-            this.camera.translation[0] + this.zoom * Math.cos(this.theta) * Math.sin(this.phi),
-            this.camera.translation[1] + this.zoom * Math.cos(this.phi),
-            this.camera.translation[2] + this.zoom * Math.sin(this.theta) * Math.sin(this.phi)
-        ];
-        let has_updated = old_glob_position !== this.camera.glob_position;
-        this.camera.position.set(
-            this.camera.glob_position[0],
-            this.camera.glob_position[1],
-            this.camera.glob_position[2]
-        );
-		this.camera.lookAt( new THREE.Vector3(
-            this.camera.translation[0],
-            this.camera.translation[1],
-            this.camera.translation[2]
-        ));
-		this.camera.updateProjectionMatrix();
-        return has_updated;
+        let old_glob_position = this.camera.glob_position.clone();
+        this.camera.set_position(this.zoom, this.phi, this.theta);
+        this.camera.position.copy(this.camera.glob_position);
+        this.camera.lookAt(this.camera.translation);
+        this.camera.updateProjectionMatrix();
+        return old_glob_position !== this.camera.glob_position;
     }
 }

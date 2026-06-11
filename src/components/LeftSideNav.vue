@@ -73,7 +73,7 @@ function onGlowScChange() {
       </div>
       <div class="control-group">
         <label>Point radius</label>
-        <input type="range" min="0.5" max="15" step="0.5" v-model.number="pointScale" @input="onPointScaleChange" />
+        <input type="range" min="0.2" max="2.0" step="0.1" v-model.number="pointScale" @input="onPointScaleChange" />
       </div>
       <div class="control-group">
         <label>Glow</label>

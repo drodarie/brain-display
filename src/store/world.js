@@ -36,7 +36,7 @@ export class World {
 
         this.mesh_classes = [];
 
-        this.point_scale = 5.0;  // point radius scaling factor.
+        this.point_scale = 1.0;  // point radius scaling factor.
         this.point_rendering = "blended";
         this.point_colormap = "mtypes";
         this.point_classes = [];
@@ -192,38 +192,38 @@ export class World {
     render_column(){
         this.mesh_classes.push(new Shape(
                 -1, null, this.add_mesh.bind(this), [300, 200, 200],
-                "io layer", color_mtypes.io, 100, [0.0, 350.0, 0.0], 0.5,
+                "io layer", color_mtypes.io, 100, [150.0, 350.0, 100.0], 1/25,
             false, false, this.light_background
 
         ));
         this.mesh_classes.push(new Shape(
             -2, null, this.add_mesh.bind(this), [300, 200, 200],
-            "dcn layer", color_mtypes.dcn_p, 100, [0, 150, 0], 0.5,
+            "dcn layer", color_mtypes.dcn_p, 100, [150, 150, 100], 1/25,
             false, false, this.light_background
         ));
         this.mesh_classes.push(new Shape(
             -3, null, this.add_mesh.bind(this), [300, 130, 200],
-            "granular layer", [0.7, 0.15, 0.15, 1.0], 100, [0, -50, 0], 0.5,
+            "granular layer", [0.7, 0.15, 0.15, 1.0], 100, [150, -50, 100], 1/25,
             false, false, this.light_background
         ));
         this.mesh_classes.push(new Shape(
             -4, null, this.add_mesh.bind(this), [300, 15, 200],
-            "purkinje layer", color_mtypes.purkinje_cell, 100, [0, 350-530, 0], 0.5,
+            "purkinje layer", color_mtypes.purkinje_cell, 100, [150, 350-530, 100], 1/25,
             false, false, this.light_background
         ));
         this.mesh_classes.push(new Shape(
             -5, null, this.add_mesh.bind(this), [300, 150, 200],
-            "molecular layer", color_mtypes.basket_cell, 100, [0, 350-545, 0], 0.5,
+            "molecular layer", color_mtypes.basket_cell, 100, [150, 350-545, 100], 1/25,
             false, false, this.light_background
         ));
         this.point_classes.push(new CellPositions(
             "src/assets/cereb-circuit/",
             this.add_points.bind(this),
             600,
-            0.5,
+            1/25,
             Colormaps[this.point_colormap],
             this.point_scale,
-            [0.0, 350.0, 0.0]
+            [150.0, 350.0, 100.0]
         ));
     }
 
@@ -247,12 +247,9 @@ export class World {
         if (box.isEmpty()) return;
         const center = new THREE.Vector3();
         box.getCenter(center);
-        this.eventListener.camera.translation[0] = center.x;
-        this.eventListener.camera.translation[1] = center.y;
-        this.eventListener.camera.translation[2] = center.z;
-        this.eventListener.camera.translation_old[0] = center.x;
-        this.eventListener.camera.translation_old[1] = center.y;
-        this.eventListener.camera.translation_old[2] = center.z;
+        this.camera.reset_translation(center);
+        this.eventListener.zoom = center.distanceTo(box.max) * 2.0;
+        this.eventListener.orig_zoom = this.eventListener.zoom;
     }
 
     add_points(points){
@@ -320,9 +317,9 @@ export class World {
             this.camera2.updateProjectionMatrix();
             for (let i in this.loaded_meshes) {
                 let mesh = this.loaded_meshes[i][0];
-                mesh.material.uniforms.camVx.value = this.camera.translation[0] - this.camera.glob_position[0];
-                mesh.material.uniforms.camVy.value = this.camera.translation[1] - this.camera.glob_position[1];
-                mesh.material.uniforms.camVz.value = this.camera.translation[2] - this.camera.glob_position[2];
+                mesh.material.uniforms.camVx.value = this.camera.translation.x - this.camera.glob_position.x;
+                mesh.material.uniforms.camVy.value = this.camera.translation.y - this.camera.glob_position.y;
+                mesh.material.uniforms.camVz.value = this.camera.translation.z - this.camera.glob_position.z;
                 if (this.loaded_meshes[i][1]) {
                     // root mesh color is based on zoom.
                     let color = Math.max(0.0, 0.6 * (1.0 - Math.exp(-(this.eventListener.zoom - 450.0) * 0.0030)));
