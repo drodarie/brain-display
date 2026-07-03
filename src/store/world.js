@@ -23,7 +23,6 @@ export class World {
         this.renderer = new THREE.WebGLRenderer({alpha: false, preserveDrawingBuffer: true, antialias: false });
         this.renderer.setSize( window.innerWidth, window.innerHeight );
         this.renderer.sortObjects = true;
-        this.updated = false;
 
         // Secondary scene/camera that mirrors the main scene; used as bloom source.
         this.scene2 = new THREE.Scene();
@@ -230,10 +229,6 @@ export class World {
     add_mesh(id, mesh, is_root){
         this.loaded_meshes[id] = [mesh, is_root];
         this.scene.add( mesh );
-        if (!this.updated){
-            this.updated = true;
-            mesh.onBeforeRender = function( renderer ) { renderer.clearDepth(); };
-        }
         if (Object.keys(this.loaded_meshes).length >= this.mesh_classes.length) {
             this.center_camera_on_scene();
         }
@@ -351,7 +346,6 @@ export class World {
         }
         this.composer2.render();
         this.finalComposer.render();
-        this.updated = false;
     }
 }
 
