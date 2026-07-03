@@ -11,6 +11,8 @@ import {AdditiveBlendShader} from "@/store/shaders/AdditiveBlendShader.js";
 import {HorizontalBlurShader} from "@/store/shaders/HorizontalBlurShader.js";
 import {VerticalBlurShader} from "@/store/shaders/VerticalBlurShader.js";
 
+// Statically enumerated at build time; only the keys (file paths) are used, files are never imported.
+const spikeFiles = import.meta.glob("/src/assets/**/*_spikes.raw", { query: "?url", import: "default" });
 
 export class World {
     constructor() {
@@ -39,6 +41,13 @@ export class World {
         this.point_rendering = "blended";
         this.point_colormap = "mtypes";
         this.point_classes = [];
+
+        this.circuit_folder = null;  // folder to look into for circuit files
+
+        this.is_simulation_running = false;
+        this.simulation_progress = 0;  // fraction (0..1) of elapsed sim time replayed so far
+        this.sim_speed = 0.01;
+        this.tau_decay_sim = 1;
 
         this.raycaster = new THREE.Raycaster();
         this._lastMouseX = NaN;
@@ -152,12 +161,41 @@ export class World {
     }
 
     launch_simulation(simulation){
-        this.is_simulation_running = false;
+        this.stop_simulation();  // reset if one simulation was running
         for (let i in this.point_classes){
             this.point_classes[i].load_simulation(simulation, () => {
                 this.is_simulation_running = true;
             });
         }
+    }
+
+    stop_simulation(){
+        this.is_simulation_running = false;
+        this.simulation_progress = 0;
+        for (let i in this.point_classes){
+            this.point_classes[i].stop_simulation();
+        }
+    }
+
+    pause_simulation(){
+        if (!this.is_simulation_running) return;
+        this.is_simulation_running = false;
+    }
+
+    resume_simulation(){
+        if (!this.is_simulation_running && this.simulation_progress <= 0) return;
+        this.is_simulation_running = true;
+        for (let i in this.point_classes){
+            this.point_classes[i].resume_simulation();
+        }
+    }
+
+    list_simulations(){
+        if (!this.circuit_folder) return [];
+        const folder = "/" + this.circuit_folder.replace(/^\/+/, "");
+        return Object.keys(spikeFiles)
+            .filter((path) => path.startsWith(folder))
+            .map((path) => path.slice(folder.length).replace(/_spikes\.raw$/, ""));
     }
 
     init(container) {
@@ -168,17 +206,18 @@ export class World {
     }
 
     render_whole_brain() {
+        this.circuit_folder = "src/assets/mouse-brain/";
         const c = this.get_root_color();
         this.mesh_classes.push(new Shape(
             997,
-            "src/assets/meshesMS/decimated_smoothed_mesh_997.obj",
+            this.circuit_folder + "meshesMS/decimated_smoothed_mesh_997.obj",
             this.add_mesh.bind(this), null,
             "root", [c, c, c],
             400, [528.0/2, -320.0/2, 456.0/2],
             1.0, false, true, this.light_background
         ));
         this.point_classes.push(new CellPositions(
-            "src/assets/mouse-brain/",
+            this.circuit_folder,
             this.add_points.bind(this),
             999,
             1.0 / 25.0,
@@ -189,6 +228,7 @@ export class World {
     }
 
     render_column(){
+        this.circuit_folder = "src/assets/cereb-circuit/";
         this.mesh_classes.push(new Shape(
                 -1, null, this.add_mesh.bind(this), [300, 200, 200],
                 "io layer", color_mtypes.io, 100, [150.0, 350.0, 100.0], 1/25,
@@ -216,7 +256,7 @@ export class World {
             false, false, this.light_background
         ));
         this.point_classes.push(new CellPositions(
-            "src/assets/cereb-circuit/",
+            this.circuit_folder,
             this.add_points.bind(this),
             600,
             1/25,
@@ -338,10 +378,19 @@ export class World {
             this.click_on_points();
             if (this.is_simulation_running){
                 let any_running = false;
+                let totalDuration = 0;
+                let elapsed = 0;
                 for (let i in this.point_classes){
-                    if (this.point_classes[i].update_simulation()) any_running = true;
+                    const pc = this.point_classes[i];
+                    const duration = pc.get_total_sim_time();
+                    if (duration > 0) {
+                        totalDuration = Math.max(duration, totalDuration);
+                        elapsed = Math.min(duration, pc.get_elapsed_sim_time(this.sim_speed));
+                    }
+                    if (pc.update_simulation(this.sim_speed, this.tau_decay_sim)) any_running = true;
                 }
                 this.is_simulation_running = any_running;
+                this.simulation_progress = (totalDuration > 0 && any_running) ? elapsed / totalDuration : 0;
             }
         }
         this.composer2.render();

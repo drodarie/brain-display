@@ -296,7 +296,7 @@ export class CellPositions {
 
         let timeNow = new Date().getTime();
         let simTimeNow = (timeNow - this.refTimeSpikes) * num_s_per_s;
-        let simTimeLastUpdate = (this.lastSpikeUpdateTime - this.refTimeSpikes) * num_s_per_s;
+        let simTimeLastUpdate = this.get_elapsed_sim_time(num_s_per_s);
 
         // decay alpha of all points
         let decayScaler = Math.exp(-(simTimeNow - simTimeLastUpdate) / tauDecay);
@@ -314,17 +314,41 @@ export class CellPositions {
             this.spikeIndex++;
         }
         if (this.spikeIndex >= this.spike_times.length) { // end of simulation
-            // reset caA
-            let old_caA = this.sphere_type === SphereTypes.blended ? 0.209: 1.0;
-            for (let v = 0; v < this.geometry.attributes.caA.array.length; v++) {
-                this.geometry.attributes.caA.array[v] = old_caA;
-            }
-            // free memory
-            this.spike_times = undefined;
-            this.spike_senders = undefined;
+            this.stop_simulation();
         }
         this.geometry.attributes.caA.needsUpdate = true;
         this.lastSpikeUpdateTime = timeNow;
         return true;
+    }
+
+    stop_simulation(){
+        if (this.spike_times === undefined) return;
+        // reset caA
+        let old_caA = this.sphere_type === SphereTypes.blended ? 0.209: 1.0;
+        for (let v = 0; v < this.geometry.attributes.caA.array.length; v++) {
+            this.geometry.attributes.caA.array[v] = old_caA;
+        }
+        // free memory
+        this.spike_times = undefined;
+        this.spike_senders = undefined;
+        this.geometry.attributes.caA.needsUpdate = true;
+    }
+
+    resume_simulation(){
+        // Shift both references forward by the paused duration so elapsed sim time excludes the pause.
+        let timeNow = new Date().getTime();
+        let delay = timeNow - this.lastSpikeUpdateTime;
+        this.refTimeSpikes += delay;
+        this.lastSpikeUpdateTime = timeNow;
+    }
+
+    get_total_sim_time(){
+        return (this.spike_times !== undefined && this.spike_times.length > 0)
+            ? this.spike_times[this.spike_times.length - 1] : 0;
+    }
+
+    get_elapsed_sim_time(num_s_per_s){
+        if (this.spike_times === undefined) return 0;
+        return (this.lastSpikeUpdateTime - this.refTimeSpikes) * num_s_per_s;
     }
 }
