@@ -206,6 +206,8 @@ export class World {
     }
 
     render_whole_brain() {
+        this.point_scale = 10;
+        this.point_colormap = "regions";
         this.circuit_folder = "src/assets/mouse-brain/";
         const c = this.get_root_color();
         this.mesh_classes.push(new Shape(

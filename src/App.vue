@@ -1,5 +1,5 @@
 <script setup>
-import { provide } from 'vue';
+import { provide, ref } from 'vue';
 import SceneVue from './components/Scene.vue';
 import LeftSideNav from "@/components/LeftSideNav.vue";
 import SimulationPlayer from "@/components/SimulationPlayer.vue";
@@ -8,6 +8,9 @@ import { World } from "@/store/world.js";
 const world = new World();
 provide('world', world);
 window.world = world;
+
+const worldLoaded = ref(false);
+provide('worldLoaded', worldLoaded);
 </script>
 
 <template>

@@ -1,5 +1,5 @@
 <script setup>
-import { ref, reactive, inject } from "vue";
+import { ref, reactive, inject, watch } from "vue";
 
 const world = inject('world');
 
@@ -17,7 +17,18 @@ const lightBackground = ref(world.light_background);
 const pointRendering = ref(world.point_rendering);
 const pointColormap = ref(world.point_colormap);
 const pointScale = ref(world.point_scale);
+const pointScaleMin = ref(world.point_scale / 10);
+const pointScaleMax = ref(world.point_scale * 2);
 const glowSc = ref(world.glowSc);
+
+const worldLoaded = inject('worldLoaded');
+watch(worldLoaded, (loaded) => {
+  if (loaded) {
+    pointScaleMin.value = world.point_scale / 10;
+    pointScaleMax.value = world.point_scale * 2;
+    pointScale.value = world.point_scale;
+  }
+});
 
 function onToggleBackground() {
   lightBackground.value = !lightBackground.value;
@@ -73,7 +84,7 @@ function onGlowScChange() {
       </div>
       <div class="control-group">
         <label>Point radius</label>
-        <input type="range" min="0.2" max="2.0" step="0.1" v-model.number="pointScale" @input="onPointScaleChange" />
+        <input type="range" :min="pointScaleMin" :max="pointScaleMax" step="0.1" v-model.number="pointScale" @input="onPointScaleChange" />
       </div>
       <div class="control-group">
         <label>Glow</label>
