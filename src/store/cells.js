@@ -167,6 +167,9 @@ export class CellPositions {
                 this.mesh.material.depthTest = true;
                 this.mesh.material.transparent = false;
             }
+            if(this.spike_times!==undefined){
+                this.reset_colors();
+            }
             this.geometry.attributes.caA.needsUpdate = true;
             this.geometry.attributes.textured.needsUpdate = true;
             this.mesh.material.needsUpdate = true;
@@ -199,9 +202,17 @@ export class CellPositions {
     _apply_point_colors(){
         if (!this._colormap_data || !this.geometry) return;
         const invert = !this.dark_background && this.sphere_type === SphereTypes.blended;
+        this._baseColor = {
+            R: new Float32Array(this._colormap_data.length),
+            G: new Float32Array(this._colormap_data.length),
+            B: new Float32Array(this._colormap_data.length),
+        };
         for (let i = 0; i < this._colormap_data.length; i++) {
             let clr = this.get_color(parseInt(this._colormap_data[i]));
             if (invert) { clr[0] = 1.0 - clr[0]; clr[1] = 1.0 - clr[1]; clr[2] = 1.0 - clr[2]; }
+            this._baseColor.R[i] = clr[0];
+            this._baseColor.G[i] = clr[1];
+            this._baseColor.B[i] = clr[2];
             this.geometry.attributes.caR.array[i] = clr[0];
             this.geometry.attributes.caG.array[i] = clr[1];
             this.geometry.attributes.caB.array[i] = clr[2];
@@ -298,32 +309,73 @@ export class CellPositions {
         let simTimeNow = (timeNow - this.refTimeSpikes) * num_s_per_s;
         let simTimeLastUpdate = this.get_elapsed_sim_time(num_s_per_s);
 
-        // decay alpha of all points
+        // decay color of all points back towards their base (region) color
         let decayScaler = Math.exp(-(simTimeNow - simTimeLastUpdate) / tauDecay);
-        for (let v = 0; v < this.geometry.attributes.caA.array.length; v++) {
-            this.geometry.attributes.caA.array[v] *= decayScaler;
-            this.geometry.attributes.caA.array[v] = Math.max(0.1, this.geometry.attributes.caA.array[v]);
+
+        let caR = this.geometry.attributes.caR.array;
+        let caG = this.geometry.attributes.caG.array;
+        let caB = this.geometry.attributes.caB.array;
+        let caA = this.geometry.attributes.caA.array;
+        if (this.sphere_type === SphereTypes.blended){
+            for (let v = 0; v < caA.length; v++) {
+                caA[v] *= decayScaler;
+                caA[v] = Math.max(0.1, caA[v]);
+            }
+        }
+        else {
+            let baseR = this._baseColor.R;
+            let baseG = this._baseColor.G;
+            let baseB = this._baseColor.B;
+
+            for (let v = 0; v < caR.length; v++) {
+                caR[v] = baseR[v] + (caR[v] - baseR[v]) * decayScaler;
+                caG[v] = baseG[v] + (caG[v] - baseG[v]) * decayScaler;
+                caB[v] = baseB[v] + (caB[v] - baseB[v]) * decayScaler;
+            }
         }
 
-        // light up neurons whose spike falls in (simTimeLastUpdate, simTimeNow]
+        // light up neurons whose spike falls in (simTimeLastUpdate, simTimeNow] in white
         while (this.spikeIndex < this.spike_times.length &&
                this.spike_times[this.spikeIndex] <= simTimeNow) {
             if (this.spike_times[this.spikeIndex] > simTimeLastUpdate) {
-                this.geometry.attributes.caA.array[this.spike_senders[this.spikeIndex]] = 1.0;
+                let sender = this.spike_senders[this.spikeIndex];
+                if (this.sphere_type === SphereTypes.blended){
+                    caA[sender] = 1.0;
+                }
+                else{
+                    caR[sender] = 1.0;
+                    caG[sender] = 1.0;
+                    caB[sender] = 1.0;
+                }
             }
             this.spikeIndex++;
         }
         if (this.spikeIndex >= this.spike_times.length) { // end of simulation
             this.stop_simulation();
         }
+        this.geometry.attributes.caR.needsUpdate = true;
+        this.geometry.attributes.caG.needsUpdate = true;
+        this.geometry.attributes.caB.needsUpdate = true;
         this.geometry.attributes.caA.needsUpdate = true;
         this.lastSpikeUpdateTime = timeNow;
         return true;
     }
 
+    reset_colors(){
+        if (this._baseColor) {
+            this.geometry.attributes.caR.array.set(this._baseColor.R);
+            this.geometry.attributes.caG.array.set(this._baseColor.G);
+            this.geometry.attributes.caB.array.set(this._baseColor.B);
+            this.geometry.attributes.caR.needsUpdate = true;
+            this.geometry.attributes.caG.needsUpdate = true;
+            this.geometry.attributes.caB.needsUpdate = true;
+        }
+    }
+
     stop_simulation(){
         if (this.spike_times === undefined) return;
-        // reset caA
+        // reset colors to their base (region) color
+        this.reset_colors();
         let old_caA = this.sphere_type === SphereTypes.blended ? 0.209: 1.0;
         for (let v = 0; v < this.geometry.attributes.caA.array.length; v++) {
             this.geometry.attributes.caA.array[v] = old_caA;
