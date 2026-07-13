@@ -37,8 +37,14 @@ class AllenData {
 
 export let allen_data = new AllenData();
 allen_data.color[997] = [80.7 / 255.0, 80.7 / 255.0, 80.7 / 255.0];
+
+allen_data.name[-1] = "Inferior Olive";
 allen_data.color[-1] = [0.46, 0.376, 0.54, 1.0];
+allen_data.name[-2] = "Deep Cerebellar Nuclei";
 allen_data.color[-2] = [0.3, 0.3, 0.3, 1.0];
+allen_data.name[-3] = "Granular Layer";
 allen_data.color[-3] = [0.7, 0.15, 0.15, 1.0];
+allen_data.name[-4] = "Purkinje layer";
 allen_data.color[-4] = [0.275, 0.800, 0.275, 1.0];
+allen_data.name[-5] = "Molecular layer";
 allen_data.color[-5] = [1, 0.647, 0, 1.0];

@@ -14,11 +14,15 @@ import {VerticalBlurShader} from "@/store/shaders/VerticalBlurShader.js";
 // Statically enumerated at build time; only the keys (file paths) are used, files are never imported.
 const spikeFiles = import.meta.glob("/src/assets/**/*_spikes.raw", { query: "?url", import: "default" });
 
+// caA value applied to a point when it's selected (short-clicked) or hovered, to highlight it.
+const SELECTED_ALPHA = 2.0;
+
 export class World {
     constructor() {
         this.loaded_meshes = {};
         this.points = null;
-        this.selected = [-1, 0, 0]; // id point selected, original size and original alpha
+        this.selected = [-1, 0, 0]; // id of hovered point, original size and original alpha
+        this.selected_cells = []; // cells selected by a short click: [{id, position, region, type}, ...]
         this.camera = new Camera( 40, window.innerWidth / window.innerHeight, 0.1, 1500);
         this.scene = new THREE.Scene();
 
@@ -55,6 +59,47 @@ export class World {
 
         this.renderer.setAnimationLoop( this.animate.bind(this) );
         this.eventListener = new EventListener(this.camera, this.renderer);
+        this.eventListener.onShortClick = this.select_hovered_cell.bind(this);
+    }
+
+    select_hovered_cell(){
+        if (this.selected[0] >= 0) {
+            let index = this.selected[0];
+            if (this.points === null || this.point_classes.length === 0 || index < 0) return;
+            if (this.selected_cells.some((c) => c.id === index)) return; // already selected
+            const info = this.point_classes[0].get_cell_info(index);
+            if (!info) return;
+            this.points.geometry.attributes.caA.array[index] = SELECTED_ALPHA;
+            if (this.selected[0] === index) {
+                // keep the hover bookkeeping consistent so leaving hover doesn't clear the new persistent highlight
+                this.selected[2] = SELECTED_ALPHA;
+            }
+            this.points.geometry.attributes.caA.needsUpdate = true;
+            this.selected_cells.push({ id: index, ...info });
+        }
+    }
+
+    deselect_cell(index){
+        const i = this.selected_cells.findIndex((c) => c.id === index);
+        if (i === -1) return;
+        this.selected_cells.splice(i, 1);
+        if (this.points !== null && this.point_classes.length > 0) {
+            const defaultAlpha = this.point_classes[0].get_default_alpha();
+            this.points.geometry.attributes.caA.array[index] = defaultAlpha;
+            if (this.selected[0] === index) {
+                // keep the hover bookkeeping consistent so it doesn't restore the stale highlighted value later
+                this.selected[2] = defaultAlpha;
+            }
+            this.points.geometry.attributes.caA.needsUpdate = true;
+        }
+    }
+
+    _reapply_selected_highlights(){
+        if (this.points === null || this.selected_cells.length === 0) return;
+        for (const cell of this.selected_cells) {
+            this.points.geometry.attributes.caA.array[cell.id] = SELECTED_ALPHA;
+        }
+        this.points.geometry.attributes.caA.needsUpdate = true;
     }
 
     _init_composers() {
@@ -134,6 +179,7 @@ export class World {
         for (let i in this.point_classes){
             this.point_classes[i].change_sphere_type(SphereTypes[this.point_rendering], !this.light_background);
         }
+        this._reapply_selected_highlights();
     }
 
     toggle_point_rendering(new_rendering){
@@ -142,6 +188,7 @@ export class World {
             for (let i in this.point_classes){
                 this.point_classes[i].change_sphere_type(SphereTypes[this.point_rendering], !this.light_background);
             }
+            this._reapply_selected_highlights();
         }
         else{
             console.warn(`Rendering ${new_rendering} is not a supported rendering for points. Choose from ${Object.keys(SphereTypes)}`)
@@ -215,6 +262,43 @@ export class World {
             "root", [c, c, c],
             400, [528.0/2, -320.0/2, 456.0/2],
             1.0, false, true, this.light_background
+        ));
+        this.point_classes.push(new CellPositions(
+            this.circuit_folder,
+            this.add_points.bind(this),
+            999,
+            1.0 / 25.0,
+            Colormaps[this.point_colormap],
+            this.point_scale,
+            )
+        );
+    }
+
+    render_declive(){
+        this.circuit_folder = "src/assets/declive/";
+        this.mesh_classes.push(new Shape(
+            10723,
+            this.circuit_folder + "10723.obj",
+            this.add_mesh.bind(this), null,
+            "granular layer", [0.7, 0.15, 0.15, 1.0],
+            300, [0,0,0],
+            1.0, false, false, this.light_background
+        ));
+        this.mesh_classes.push(new Shape(
+            10724,
+            this.circuit_folder + "10724.obj",
+            this.add_mesh.bind(this), null,
+            "purkinje layer", color_mtypes.purkinje_cell,
+            300, [0,0,0],
+            1.0, false, false, this.light_background
+        ));
+        this.mesh_classes.push(new Shape(
+            10725,
+            this.circuit_folder + "10725.obj",
+            this.add_mesh.bind(this), null,
+            "molecular layer", color_mtypes.basket_cell,
+            300, [0, 0, 0],
+            1.0, false, false, this.light_background
         ));
         this.point_classes.push(new CellPositions(
             this.circuit_folder,

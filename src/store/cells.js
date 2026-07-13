@@ -29,7 +29,7 @@ export let color_types = {
     micro: [0.0, 0.8, 0.6]
 };
 
-let id_mtypes = {
+export let id_mtypes = {
     0: 'basket_cell', 1: 'dcn_i', 2: 'dcn_p', 3: 'io',
     4: 'glomerulus', 5: 'golgi_cell', 6: 'granule_cell',
     7: 'mossy_fibers', 8: 'purkinje_cell', 9: 'stellate_cell',
@@ -81,6 +81,10 @@ export class CellPositions {
         this.dark_background = dark_background;
         this.sphere_type = SphereTypes.blended;
         this._colormap_data = null;
+        this._region_ids = null;  // per-point region id, for info lookup (independent of display colormap)
+        this._type_ids = null;  // per-point exc/inh type id, for info lookup
+        this._mtype_ids = null;  // per-point m-type id, for info lookup
+        this.raw_positions = null;  // per-point [x,y,z] in original (unscaled) coordinates
         this.open_points(folder + "positionsSIM.raw");
     }
 
@@ -90,6 +94,7 @@ export class CellPositions {
 
         if (arrayBuffer.byteLength % 12 === 0) {
             let byteArray = new Float32Array(arrayBuffer);
+            this.raw_positions = byteArray;
 
             for (let i = 0; i < byteArray.length; i = i + 3) {
                 vertices_.push(this.sc * (byteArray[i] - this.offset[0]));
@@ -104,7 +109,7 @@ export class CellPositions {
             let caR = new Array(vertices_.length/3).fill(1.0);
             let caG = new Array(vertices_.length/3).fill(1.0);
             let caB = new Array(vertices_.length/3).fill(1.0);
-            let caA = new Array(vertices_.length/3).fill(0.209);
+            let caA = new Array(vertices_.length/3).fill(1.0);
 
             this.geometry = new THREE.BufferGeometry();
             this.geometry.setAttribute("position", new THREE.Float32BufferAttribute(vertices_, 3));
@@ -131,6 +136,7 @@ export class CellPositions {
             this.mesh.renderOrder = this.z_order;
             this.load_colormap(this.color_map);
             this.load_radii();
+            this.load_lookup_data();
             this.callback(this.mesh);
         }
         else {
@@ -269,6 +275,47 @@ export class CellPositions {
         requestNEUPARA.send(null);
     }
 
+    // Loads region/type/m-type per point for info lookup, independently of the currently displayed colormap.
+    load_lookup_data(){
+        this._fetch_int16(Colormaps.regions, (arr) => { this._region_ids = arr; });
+        this._fetch_int16(Colormaps.types, (arr) => { this._type_ids = arr; });
+        this._fetch_int16(Colormaps.mtypes, (arr) => { this._mtype_ids = arr; });
+    }
+
+    _fetch_int16(filename, onLoaded){
+        let request = new XMLHttpRequest();
+        request.open('GET', this.folder + filename, true);
+        request.responseType = "arraybuffer";
+        request.addEventListener('load', (event) => {
+            let arrayBuffer = event.currentTarget.response;
+            if (arrayBuffer) onLoaded(new Int16Array(arrayBuffer));
+        }, false);
+        request.send(null);
+    }
+
+    get_cell_info(index){
+        if (!this.raw_positions) return null;
+        const region_id = this._region_ids ? this._region_ids[index] : undefined;
+        const type_id = this._type_ids ? this._type_ids[index] : undefined;
+        const mtype_id = this._mtype_ids ? this._mtype_ids[index] : undefined;
+        return {
+            position: [
+                this.raw_positions[index * 3],
+                this.raw_positions[index * 3 + 1],
+                this.raw_positions[index * 3 + 2],
+            ],
+            region: (region_id !== undefined && allen_data.name[region_id] !== undefined)
+                ? allen_data.name[region_id] : "Unknown",
+            type: (mtype_id !== undefined && id_mtypes[mtype_id] !== undefined)
+                ? id_mtypes[mtype_id]
+                : ((type_id !== undefined && id_types[type_id] !== undefined) ? id_types[type_id] : "Unknown"),
+        };
+    }
+
+    get_default_alpha(){
+        return this.sphere_type === SphereTypes.blended ? 0.209: 1.0;
+    }
+
     get_spike_times(event) {
         var arrayBuffer = event.currentTarget.response;
         this.spike_times = [];
@@ -376,7 +423,7 @@ export class CellPositions {
         if (this.spike_times === undefined) return;
         // reset colors to their base (region) color
         this.reset_colors();
-        let old_caA = this.sphere_type === SphereTypes.blended ? 0.209: 1.0;
+        let old_caA = this.get_default_alpha();
         for (let v = 0; v < this.geometry.attributes.caA.array.length; v++) {
             this.geometry.attributes.caA.array[v] = old_caA;
         }

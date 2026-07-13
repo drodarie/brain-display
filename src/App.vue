@@ -2,6 +2,7 @@
 import { provide, ref } from 'vue';
 import SceneVue from './components/Scene.vue';
 import LeftSideNav from "@/components/LeftSideNav.vue";
+import RightSideNav from "@/components/RightSideNav.vue";
 import SimulationPlayer from "@/components/SimulationPlayer.vue";
 import { World } from "@/store/world.js";
 
@@ -21,6 +22,7 @@ provide('worldLoaded', worldLoaded);
   <main>
     <LeftSideNav />
     <SceneVue />
+    <RightSideNav />
     <SimulationPlayer />
   </main>
 </template>

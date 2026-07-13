@@ -22,6 +22,8 @@ export class EventListener {
         this.phi_old = 0.0;
         this.width = 800;
         this.height = 600;
+        this.onShortClick = null;  // callback fired on a short (non-drag) left click, set externally
+        this._clickStart = null;
     }
 
     onMouseMove(event) {
@@ -46,9 +48,22 @@ export class EventListener {
             this.camera.translation_old.copy(this.camera.translation);
         }
         this.mouse_is_down[event.button] = true;
+        if (event.button === 0) {
+            this._clickStart = { x: event.clientX, y: event.clientY, t: performance.now() };
+        }
     }
     onMouseUp(event) {
         this.mouse_is_down[event.button] = false;
+        if (event.button === 0 && this._clickStart !== null) {
+            const dx = event.clientX - this._clickStart.x;
+            const dy = event.clientY - this._clickStart.y;
+            const dt = performance.now() - this._clickStart.t;
+            // Only treat as a click if the pointer barely moved and was released quickly (not a drag/orbit).
+            if (Math.sqrt(dx * dx + dy * dy) < 5 && dt < 400 && this.onShortClick) {
+                this.onShortClick();
+            }
+            this._clickStart = null;
+        }
     }
 
     onMouseWheel(event){
