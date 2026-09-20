@@ -60,6 +60,12 @@ export class World {
         this.renderer.setAnimationLoop( this.animate.bind(this) );
         this.eventListener = new EventListener(this.camera, this.renderer);
         this.eventListener.onShortClick = this.select_hovered_cell.bind(this);
+        this.auto_rotate = false;
+    }
+
+    toggle_auto_rotate(){
+        this.auto_rotate = !this.auto_rotate;
+        this.eventListener.auto_rotate = this.auto_rotate;
     }
 
     select_hovered_cell(){

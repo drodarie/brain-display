@@ -20,6 +20,7 @@ const pointScale = ref(world.point_scale);
 const pointScaleMin = ref(world.point_scale / 10);
 const pointScaleMax = ref(world.point_scale * 2);
 const glowSc = ref(world.glowSc);
+const autoRotate = ref(world.auto_rotate);
 
 const worldLoaded = inject('worldLoaded');
 watch(worldLoaded, (loaded) => {
@@ -49,6 +50,11 @@ function onPointScaleChange() {
 
 function onGlowScChange() {
   world.set_glowSc(glowSc.value);
+}
+
+function onToggleAutoRotate() {
+  autoRotate.value = !autoRotate.value;
+  world.toggle_auto_rotate();
 }
 </script>
 
@@ -89,6 +95,13 @@ function onGlowScChange() {
       <div class="control-group">
         <label>Glow</label>
         <input type="range" min="0" max="3" step="0.05" v-model.number="glowSc" @input="onGlowScChange" />
+      </div>
+      <div class="control-group">
+        <label>Auto-rotate</label>
+        <input type="checkbox" :checked="autoRotate" />
+        <div class="toggler-slider" @click="onToggleAutoRotate">
+          <div class="toggler-knob"></div>
+        </div>
       </div>
     </div>
   </div>

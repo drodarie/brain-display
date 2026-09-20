@@ -24,6 +24,8 @@ export class EventListener {
         this.height = 600;
         this.onShortClick = null;  // callback fired on a short (non-drag) left click, set externally
         this._clickStart = null;
+        this.auto_rotate = false;
+        this.auto_rotate_speed = 0.0030;  // radians per frame
     }
 
     onMouseMove(event) {
@@ -121,6 +123,9 @@ export class EventListener {
         else if (this.mouse_is_down[0]) {
             this.theta = this.theta_old + 0.0075 * (this.mouse.x - this.mouse_old.x);
             this.phi = this.phi_old - 0.0075 * (this.mouse.y - this.mouse_old.y);
+        }
+        else if (this.auto_rotate) {
+            this.theta += this.auto_rotate_speed;
         }
         if (this.phi > Math.PI) {
             this.phi = Math.PI - 0.0001;
