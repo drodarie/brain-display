@@ -61,6 +61,23 @@ export let color_mtypes = {
     io_minus: [0.76, 0.276, 0.74, 1.0]
 };
 
+// Name of a cell type: its m-type if known, otherwise its exc/inh type.
+function cell_type_name(mtype_id, type_id) {
+    if (mtype_id !== undefined && id_mtypes[mtype_id] !== undefined) return id_mtypes[mtype_id];
+    if (type_id !== undefined && id_types[type_id] !== undefined) return id_types[type_id];
+    return "Unknown";
+}
+
+// Display name of a cell type, e.g. "granule_cell" -> "Granule cell".
+export function format_cell_type_name(name) {
+    name = name.replaceAll("_", " ");
+    return name.charAt(0).toUpperCase() + name.slice(1);
+}
+
+export function cell_type_color(name) {
+    return color_mtypes[name] || color_types[name] || [0.5, 0.5, 0.5];
+}
+
 export class CellPositions {
     constructor(folder, callback, z_order = 999,
                 sc = 1.0 / 25.0,
@@ -85,6 +102,8 @@ export class CellPositions {
         this._type_ids = null;  // per-point exc/inh type id, for info lookup
         this._mtype_ids = null;  // per-point m-type id, for info lookup
         this.raw_positions = null;  // per-point [x,y,z] in original (unscaled) coordinates
+        // resolved once _region_ids, _type_ids and _mtype_ids are loaded
+        this.lookup_ready = new Promise((resolve) => { this._resolve_lookup_ready = resolve; });
         this.open_points(folder + "positionsSIM.raw");
     }
 
@@ -277,20 +296,50 @@ export class CellPositions {
 
     // Loads region/type/m-type per point for info lookup, independently of the currently displayed colormap.
     load_lookup_data(){
-        this._fetch_int16(Colormaps.regions, (arr) => { this._region_ids = arr; });
-        this._fetch_int16(Colormaps.types, (arr) => { this._type_ids = arr; });
-        this._fetch_int16(Colormaps.mtypes, (arr) => { this._mtype_ids = arr; });
+        Promise.all([
+            this._fetch_int16(Colormaps.regions, (arr) => { this._region_ids = arr; }),
+            this._fetch_int16(Colormaps.types, (arr) => { this._type_ids = arr; }),
+            this._fetch_int16(Colormaps.mtypes, (arr) => { this._mtype_ids = arr; }),
+        ]).then(() => {
+            this._index_cell_types();
+            this._resolve_lookup_ready();
+        });
     }
 
+    // Resolves each cell's type name once: _type_names holds the unique names, _type_index the per-cell index in it.
+    _index_cell_types(){
+        if (!this._region_ids) return;
+        this._type_names = [];
+        this._type_index = new Uint16Array(this._region_ids.length);
+        const index_of = {};  // "mtype_id,type_id" -> index in _type_names
+        for (let i = 0; i < this._region_ids.length; i++) {
+            const mtype = this._mtype_ids ? this._mtype_ids[i] : undefined;
+            const type = this._type_ids ? this._type_ids[i] : undefined;
+            const key = `${mtype},${type}`;
+            if (!(key in index_of)) {
+                const name = cell_type_name(mtype, type);
+                let idx = this._type_names.indexOf(name);
+                if (idx === -1) idx = this._type_names.push(name) - 1;
+                index_of[key] = idx;
+            }
+            this._type_index[i] = index_of[key];
+        }
+    }
+
+    // Returns a promise resolved once the file is loaded and passed to onLoaded (also resolved on failure).
     _fetch_int16(filename, onLoaded){
-        let request = new XMLHttpRequest();
-        request.open('GET', this.folder + filename, true);
-        request.responseType = "arraybuffer";
-        request.addEventListener('load', (event) => {
-            let arrayBuffer = event.currentTarget.response;
-            if (arrayBuffer) onLoaded(new Int16Array(arrayBuffer));
-        }, false);
-        request.send(null);
+        return new Promise((resolve) => {
+            let request = new XMLHttpRequest();
+            request.open('GET', this.folder + filename, true);
+            request.responseType = "arraybuffer";
+            request.addEventListener('load', (event) => {
+                let arrayBuffer = event.currentTarget.response;
+                if (arrayBuffer) onLoaded(new Int16Array(arrayBuffer));
+                resolve();
+            }, false);
+            request.addEventListener('error', () => resolve(), false);
+            request.send(null);
+        });
     }
 
     get_cell_info(index){
@@ -306,10 +355,39 @@ export class CellPositions {
             ],
             region: (region_id !== undefined && allen_data.name[region_id] !== undefined)
                 ? allen_data.name[region_id] : "Unknown",
-            type: (mtype_id !== undefined && id_mtypes[mtype_id] !== undefined)
-                ? id_mtypes[mtype_id]
-                : ((type_id !== undefined && id_types[type_id] !== undefined) ? id_types[type_id] : "Unknown"),
+            type: cell_type_name(mtype_id, type_id),
         };
+    }
+
+    // Number of cells per region id and cell type: {region_id: {cell_type: count}}.
+    get_region_counts(){
+        if (!this._region_ids || !this._type_index) return {};
+        const counts = {};
+        for (let i = 0; i < this._region_ids.length; i++) {
+            const region = this._region_ids[i];
+            const name = this._type_names[this._type_index[i]];
+            counts[region] = counts[region] || {};
+            counts[region][name] = (counts[region][name] || 0) + 1;
+        }
+        return counts;
+    }
+
+    // Shows/hides cells: is_hidden(region_id, cell_type) is evaluated once per (region, type) combination.
+    update_visibility(is_hidden){
+        if (!this.geometry || !this._region_ids || !this._type_index) return;
+        const ex = this.geometry.attributes.ex.array;
+        const n_types = this._type_names.length;
+        const cache = new Map();  // region_id * n_types + type index -> 0 (hidden) or 1 (visible)
+        for (let i = 0; i < this._region_ids.length; i++) {
+            const key = this._region_ids[i] * n_types + this._type_index[i];
+            let visible = cache.get(key);
+            if (visible === undefined) {
+                visible = is_hidden(this._region_ids[i], this._type_names[this._type_index[i]]) ? 0 : 1;
+                cache.set(key, visible);
+            }
+            ex[i] = visible;
+        }
+        this.geometry.attributes.ex.needsUpdate = true;
     }
 
     get_default_alpha(){

@@ -6,6 +6,7 @@ import {EventListener} from "@/store/interact.js";
 import {Camera} from "@/store/camera.js";
 import {CellPositions, color_mtypes, Colormaps, SphereTypes} from "@/store/cells.js";
 import {Shape} from "@/store/shape.js";
+import {allen_data} from "@/store/allen_atlas.js";
 import {MeshBlendShader} from "@/store/shaders/MeshBlendShader.js";
 import {AdditiveBlendShader} from "@/store/shaders/AdditiveBlendShader.js";
 import {HorizontalBlurShader} from "@/store/shaders/HorizontalBlurShader.js";
@@ -47,10 +48,13 @@ export class World {
         this.point_classes = [];
 
         this.circuit_folder = null;  // folder to look into for circuit files
+        this.tree_root_regions = [997];  // ids of the top-level regions of the region tree (left panel)
+        this.hidden_regions = new Set();  // region ids hidden by the user, with their cells and sub-regions
+        this.hidden_cell_types = new Set();  // "region_id|cell_type" hidden by the user
 
         this.is_simulation_running = false;
         this.simulation_progress = 0;  // fraction (0..1) of elapsed sim time replayed so far
-        this.sim_speed = 0.01;
+        this.sim_speed = 0.05;
         this.tau_decay_sim = 1;
 
         this.raycaster = new THREE.Raycaster();
@@ -251,6 +255,46 @@ export class World {
             .map((path) => path.slice(folder.length).replace(/_spikes\.raw$/, ""));
     }
 
+    // Resolves with the region tree of all loaded cells and displayed meshes, with root_ids as top-level regions
+    // (see AllenData.build_count_tree), once the cells' region and type ids are loaded.
+    async get_region_tree(root_ids = this.tree_root_regions){
+        const counts = {};  // {region_id: {cell_type: count}}
+        for (const pc of this.point_classes) {
+            await pc.lookup_ready;
+            const pc_counts = pc.get_region_counts();
+            for (const id in pc_counts) {
+                counts[id] = counts[id] || {};
+                for (const type in pc_counts[id]) counts[id][type] = (counts[id][type] || 0) + pc_counts[id][type];
+            }
+        }
+        return allen_data.build_count_tree(counts, root_ids, this.mesh_classes.map((shape) => shape.id));
+    }
+
+    set_region_visible(region_id, visible){
+        if (visible) this.hidden_regions.delete(region_id);
+        else this.hidden_regions.add(region_id);
+        this._update_visibility();
+    }
+
+    set_cell_type_visible(region_id, cell_type, visible){
+        const key = `${region_id}|${cell_type}`;
+        if (visible) this.hidden_cell_types.delete(key);
+        else this.hidden_cell_types.add(key);
+        this._update_visibility();
+    }
+
+    // Applies hidden_regions and hidden_cell_types to the meshes and the cells.
+    _update_visibility(){
+        for (const id in this.loaded_meshes) {
+            this.loaded_meshes[id][0].visible = !allen_data.is_hidden(Number(id), this.hidden_regions);
+        }
+        const is_hidden = (region_id, cell_type) => this.hidden_cell_types.has(`${region_id}|${cell_type}`)
+            || allen_data.is_hidden(region_id, this.hidden_regions);
+        for (const pc of this.point_classes) {
+            pc.update_visibility(is_hidden);
+        }
+    }
+
     init(container) {
         container.appendChild(this.renderer.domElement);
         this.eventListener.init_interactions(container);
@@ -259,6 +303,8 @@ export class World {
     }
 
     render_whole_brain() {
+        this.point_colormap = "regions";
+        this.point_scale = 8.0;
         this.circuit_folder = "src/assets/mouse-brain/";
         const c = this.get_root_color();
         this.mesh_classes.push(new Shape(
@@ -281,6 +327,7 @@ export class World {
     }
 
     render_declive(){
+        this.tree_root_regions = [936];
         this.circuit_folder = "src/assets/declive/";
         this.mesh_classes.push(new Shape(
             10723,
@@ -319,6 +366,7 @@ export class World {
 
     render_column(){
         this.circuit_folder = "src/assets/cereb-circuit/";
+        this.tree_root_regions = [528, 519, 83];
         this.mesh_classes.push(new Shape(
                 -1, null, this.add_mesh.bind(this), [300, 200, 200],
                 "io layer", color_mtypes.io, 100, [150.0, 350.0, 100.0], 1/25,
@@ -358,6 +406,7 @@ export class World {
 
     add_mesh(id, mesh, is_root){
         this.loaded_meshes[id] = [mesh, is_root];
+        mesh.visible = !allen_data.is_hidden(Number(id), this.hidden_regions);
         this.scene.add( mesh );
         if (Object.keys(this.loaded_meshes).length >= this.mesh_classes.length) {
             this.center_camera_on_scene();

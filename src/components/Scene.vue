@@ -6,7 +6,7 @@
   const worldLoaded = inject('worldLoaded');
 
   onMounted(() => {
-    world.render_column();
+    world.render_declive();
     world.init(target.value);
     worldLoaded.value = true;
   });

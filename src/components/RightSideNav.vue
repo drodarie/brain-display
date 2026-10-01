@@ -1,5 +1,6 @@
 <script setup>
 import {ref, onMounted, onBeforeUnmount, inject, reactive} from "vue";
+import {format_cell_type_name} from "@/store/cells.js";
 
 const world = inject('world');
 
@@ -34,11 +35,6 @@ function formatPosition(position) {
   return position.map((v) => v.toFixed(1)).join(", ");
 }
 
-function formatCellTypeName(cellType) {
-  cellType = cellType.replaceAll("_", " ");
-  return cellType.charAt(0).toUpperCase() + cellType.slice(1);
-}
-
 onMounted(() => {
   poll();
 });
@@ -66,7 +62,7 @@ onBeforeUnmount(() => {
         </div>
         <div class="card-row">
           <span class="label">Type</span>
-          <span>{{ formatCellTypeName(cell.type) }}</span>
+          <span>{{ format_cell_type_name(cell.type) }}</span>
         </div>
         <div class="card-row">
           <span class="label">Position</span>

@@ -1,5 +1,6 @@
 <script setup>
 import { ref, reactive, inject, watch } from "vue";
+import RegionTreeNode from "@/components/RegionTreeNode.vue";
 
 const world = inject('world');
 
@@ -9,9 +10,12 @@ const is_nav_open = ref(false);
 
 function toggle_nav() {
   is_nav_open.value = !is_nav_open.value;
-  sideNavStyle.width = is_nav_open.value ? "20rem" : "2rem";
+  sideNavStyle.width = is_nav_open.value ? "26rem" : "2rem";
   arrowStyle.transform = is_nav_open.value ? "rotate(180deg)" : "rotate(0deg)";
 }
+
+const activeTab = ref("regions");
+const regionTree = ref(null);  // list of root nodes, null while loading
 
 const lightBackground = ref(world.light_background);
 const pointRendering = ref(world.point_rendering);
@@ -28,6 +32,7 @@ watch(worldLoaded, (loaded) => {
     pointScaleMin.value = world.point_scale / 10;
     pointScaleMax.value = world.point_scale * 2;
     pointScale.value = world.point_scale;
+    world.get_region_tree().then((tree) => { regionTree.value = tree; });
   }
 });
 
@@ -61,46 +66,60 @@ function onToggleAutoRotate() {
 <template>
   <div class="sidenav" :style="sideNavStyle">
     <div class="arrow" @click="toggle_nav" :style="arrowStyle"></div>
-    <h1 v-show="is_nav_open">Settings</h1>
-    <hr v-show="is_nav_open">
-    <div class="controls" v-show="is_nav_open">
-      <div class="control-group">
-        <label>Light background</label>
-        <input type="checkbox" :checked="lightBackground" />
-        <div class="toggler-slider" @click="onToggleBackground">
-          <div class="toggler-knob"></div>
+    <div class="panel" v-show="is_nav_open">
+      <div class="tabs">
+        <button :class="{ active: activeTab === 'regions' }" @click="activeTab = 'regions'">Regions</button>
+        <button :class="{ active: activeTab === 'settings' }" @click="activeTab = 'settings'">Settings</button>
+      </div>
+      <div class="regions" v-show="activeTab === 'regions'">
+        <div class="tree-header">
+          <span>Region</span>
+          <span>Cells</span>
         </div>
+        <p class="loading" v-if="regionTree === null">Loading...</p>
+        <!-- a single root can't be hidden: it would hide everything -->
+        <RegionTreeNode v-for="root in regionTree" :key="root.id" :node="root" :expanded="true"
+                        :hideable="regionTree.length > 1" />
       </div>
-      <div class="control-group">
-        <label>Point style</label>
-        <select v-model="pointRendering" @change="onPointRenderingChange">
-          <option value="sphere">Sphere</option>
-          <option value="circle">Circle</option>
-          <option value="blended">Blended</option>
-        </select>
-      </div>
-      <div class="control-group">
-        <label>Colormap</label>
-        <select v-model="pointColormap" @change="onColormapChange">
-          <option value="regions">Regions</option>
-          <option value="orientations">Orientations</option>
-          <option value="types">Types</option>
-          <option value="mtypes">M-types</option>
-        </select>
-      </div>
-      <div class="control-group">
-        <label>Point radius</label>
-        <input type="range" :min="pointScaleMin" :max="pointScaleMax" step="0.1" v-model.number="pointScale" @input="onPointScaleChange" />
-      </div>
-      <div class="control-group">
-        <label>Glow</label>
-        <input type="range" min="0" max="3" step="0.05" v-model.number="glowSc" @input="onGlowScChange" />
-      </div>
-      <div class="control-group">
-        <label>Auto-rotate</label>
-        <input type="checkbox" :checked="autoRotate" />
-        <div class="toggler-slider" @click="onToggleAutoRotate">
-          <div class="toggler-knob"></div>
+      <div class="controls" v-show="activeTab === 'settings'">
+        <div class="control-group">
+          <label>Light background</label>
+          <input type="checkbox" :checked="lightBackground" />
+          <div class="toggler-slider" @click="onToggleBackground">
+            <div class="toggler-knob"></div>
+          </div>
+        </div>
+        <div class="control-group">
+          <label>Point style</label>
+          <select v-model="pointRendering" @change="onPointRenderingChange">
+            <option value="sphere">Sphere</option>
+            <option value="circle">Circle</option>
+            <option value="blended">Blended</option>
+          </select>
+        </div>
+        <div class="control-group">
+          <label>Colormap</label>
+          <select v-model="pointColormap" @change="onColormapChange">
+            <option value="regions">Regions</option>
+            <option value="orientations">Orientations</option>
+            <option value="types">Types</option>
+            <option value="mtypes">M-types</option>
+          </select>
+        </div>
+        <div class="control-group">
+          <label>Point radius</label>
+          <input type="range" :min="pointScaleMin" :max="pointScaleMax" step="0.1" v-model.number="pointScale" @input="onPointScaleChange" />
+        </div>
+        <div class="control-group">
+          <label>Glow</label>
+          <input type="range" min="0" max="3" step="0.05" v-model.number="glowSc" @input="onGlowScChange" />
+        </div>
+        <div class="control-group">
+          <label>Auto-rotate</label>
+          <input type="checkbox" :checked="autoRotate" />
+          <div class="toggler-slider" @click="onToggleAutoRotate">
+            <div class="toggler-knob"></div>
+          </div>
         </div>
       </div>
     </div>
@@ -119,10 +138,63 @@ function onToggleAutoRotate() {
   overflow: hidden;
   transition: width 0.5s;
 }
-h1 {
-    color: #fff;
-    text-align: center;
-    padding: 20px;
+.panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: calc(26rem - 35px);
+}
+
+.tabs {
+  display: flex;
+  border-bottom: 1px solid #555;
+}
+
+.tabs button {
+  flex: 1;
+  padding: 16px 0 12px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: #aaa;
+  font-size: 18px;
+  font-family: sans-serif;
+  cursor: pointer;
+}
+
+.tabs button:hover {
+  color: #fff;
+}
+
+.tabs button.active {
+  color: #fff;
+  border-bottom-color: #8af;
+}
+
+.regions {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 8px 16px 12px;
+}
+
+.tree-header {
+  display: flex;
+  justify-content: space-between;
+  padding: 0 0 6px 16px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid #555;
+  color: #888;
+  font-size: 13px;
+  font-family: sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.loading {
+  color: #aaa;
+  font-size: 16px;
+  font-family: sans-serif;
+  padding: 8px 16px;
 }
 .arrow {
   position: absolute;
@@ -138,12 +210,12 @@ h1 {
 }
 
 .controls {
-  padding: 20px 35px 16px 16px;
+  padding: 20px 0 16px 16px;
   display: grid;
   grid-template-columns: auto 1fr;
   align-items: center;
   gap: 30px 14px;
-  min-width: 218px;
+  min-width: 280px;
 }
 
 .control-group {
@@ -152,7 +224,7 @@ h1 {
 
 label {
   color: #ccc;
-  font-size: 13px;
+  font-size: 16px;
   font-family: sans-serif;
   white-space: nowrap;
 }
@@ -164,7 +236,7 @@ select {
   color: #fff;
   border: 1px solid #777;
   border-radius: 4px;
-  font-size: 13px;
+  font-size: 16px;
   cursor: pointer;
 }
 
